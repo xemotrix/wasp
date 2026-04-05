@@ -305,7 +305,7 @@ alloc:
 realloc:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 40
+	sub rsp, 48
 	mov [rbp-8], rdi
 	mov [rbp-16], rsi
 	; define old_size
@@ -351,6 +351,10 @@ IF_7:
 	push 0
 	pop rax
 	mov QWORD [rbp-40], rax
+	; define i
+	push 0
+	pop rax
+	mov QWORD [rbp-48], rax
 WHC_8:
 	push QWORD [rbp-40]
 	push QWORD [rbp-24]
@@ -364,14 +368,14 @@ WHC_8:
 	cmp rax, 0
 	je WHE_9
 	push QWORD [rbp-32]
-	push QWORD [rbp-40]
+	push QWORD [rbp-48]
 	pop rax
 	pop rbx
 	imul rax, 8
 	add rbx, rax
 	push rbx
 	push QWORD [rbp-8]
-	push QWORD [rbp-40]
+	push QWORD [rbp-48]
 	pop rax
 	pop rbx
 	imul rax, 8
@@ -386,6 +390,17 @@ WHC_8:
 	push rax
 	push QWORD [rbp-40]
 	push 8
+	pop rbx
+	pop rax
+	add rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	lea rax, [rbp-48]
+	push rax
+	push QWORD [rbp-48]
+	push 1
 	pop rbx
 	pop rax
 	add rax, rbx
@@ -568,6 +583,18 @@ WHC_12:
 	cmp rax, rbx
 	sete cl
 	push rcx
+	push QWORD [rbp-40]
+	push 0
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop rbx
+	pop rax
+	and al, bl
+	push rax
 	pop ax
 	cmp al, 0
 	je IF_14
@@ -628,6 +655,481 @@ WHE_13:
 	pop rbp
 	ret
 
+fmt_dec:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 56
+	mov [rbp-8], rdi
+	; define out
+	push 20
+	pop rdi
+	call alloc
+	push rax
+	pop rax
+	mov QWORD [rbp-16], rax
+	; define idx
+	push 0
+	pop rax
+	mov QWORD [rbp-24], rax
+	push QWORD [rbp-8]
+	push 0
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	setl cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_20
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 45
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	lea rax, [rbp-8]
+	push rax
+	push QWORD [rbp-8]
+	pop rax
+	neg rax
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	lea rax, [rbp-24]
+	push rax
+	push QWORD [rbp-24]
+	push 1
+	pop rbx
+	pop rax
+	add rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+IF_20:
+	; define start
+	push QWORD [rbp-24]
+	pop rax
+	mov QWORD [rbp-32], rax
+	push QWORD [rbp-8]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+WHC_21:
+	push QWORD [rbp-8]
+	push 0
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	setne cl
+	push rcx
+	pop rax
+	cmp rax, 0
+	je WHE_22
+	push QWORD [rbp-8]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+	; define mod
+	push QWORD [rbp-8]
+	push 10
+	pop rbx
+	pop rax
+	cqo
+	idiv rbx
+	push rdx
+	pop rax
+	mov QWORD [rbp-40], rax
+	push STR_23
+	push QWORD [rbp-40]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rsi
+	pop rdi
+	call strcat
+	push rax
+	pop rdi
+	call println
+	push QWORD [rbp-40]
+	push 0
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_24
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 48
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_24:
+	push QWORD [rbp-40]
+	push 1
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_25
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 49
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_25:
+	push QWORD [rbp-40]
+	push 2
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_26
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 50
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_26:
+	push QWORD [rbp-40]
+	push 3
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_27
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 51
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_27:
+	push QWORD [rbp-40]
+	push 4
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_28
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 52
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_28:
+	push QWORD [rbp-40]
+	push 5
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_29
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 53
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_29:
+	push QWORD [rbp-40]
+	push 6
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_30
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 54
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_30:
+	push QWORD [rbp-40]
+	push 7
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_31
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 55
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_31:
+	push QWORD [rbp-40]
+	push 8
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_32
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 56
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_32:
+	push QWORD [rbp-40]
+	push 9
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	sete cl
+	push rcx
+	pop ax
+	cmp al, 0
+	je IF_33
+	push QWORD [rbp-16]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push 57
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+IF_33:
+	lea rax, [rbp-24]
+	push rax
+	push QWORD [rbp-24]
+	push 1
+	pop rbx
+	pop rax
+	add rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	lea rax, [rbp-8]
+	push rax
+	push QWORD [rbp-8]
+	push 10
+	pop rbx
+	pop rax
+	cqo
+	idiv rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	jmp WHC_21
+WHE_22:
+	; define end
+	push QWORD [rbp-24]
+	pop rax
+	mov QWORD [rbp-48], rax
+	push QWORD [rbp-32]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+	push QWORD [rbp-48]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+WHC_34:
+	push QWORD [rbp-32]
+	push QWORD [rbp-48]
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	setl cl
+	push rcx
+	pop rax
+	cmp rax, 0
+	je WHE_35
+	push QWORD [rbp-32]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+	push QWORD [rbp-48]
+	pop rdi
+	call fmt_hex
+	push rax
+	pop rdi
+	call println
+	; define aux
+	push QWORD [rbp-16]
+	push QWORD [rbp-32]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rax
+	mov QWORD [rbp-56], rax
+	push QWORD [rbp-16]
+	push QWORD [rbp-32]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push QWORD [rbp-16]
+	push QWORD [rbp-48]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	push QWORD [rbp-16]
+	push QWORD [rbp-48]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push QWORD [rbp-56]
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	lea rax, [rbp-32]
+	push rax
+	push QWORD [rbp-32]
+	push 1
+	pop rbx
+	pop rax
+	add rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	lea rax, [rbp-48]
+	push rax
+	push QWORD [rbp-48]
+	push 1
+	pop rbx
+	pop rax
+	sub rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	jmp WHC_34
+WHE_35:
+	push QWORD [rbp-16]
+	pop rax
+	mov rsp, rbp
+	pop rbp
+	ret
+
 fmt_hex:
 	push rbp
 	mov rbp, rsp
@@ -646,20 +1148,27 @@ fmt_hex:
 	pop rax
 	mov QWORD [rbp-16], rax
 	; define hex
-	push STR_20
+	push STR_36
 	pop rax
 	mov QWORD [rbp-24], rax
 	push QWORD [rbp-16]
+	push 0
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
 	push 48
 	pop rax
 	pop rbx
 	mov BYTE [rbx], al
 	push QWORD [rbp-16]
 	push 1
-	pop rbx
 	pop rax
-	add rax, rbx
-	push rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
 	push 120
 	pop rax
 	pop rbx
@@ -670,7 +1179,7 @@ fmt_hex:
 	mov QWORD [rbp-32], rax
 	; define shift
 	; define idx
-WHC_21:
+WHC_37:
 	push QWORD [rbp-32]
 	push 16
 	pop rbx
@@ -681,7 +1190,7 @@ WHC_21:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_22
+	je WHE_38
 	lea rax, [rbp-40]
 	push rax
 	push 15
@@ -750,8 +1259,8 @@ WHC_21:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_21
-WHE_22:
+	jmp WHC_37
+WHE_38:
 	push QWORD [rbp-16]
 	push 16
 	push 3
@@ -814,7 +1323,7 @@ strcat:
 	push 0
 	pop rax
 	mov QWORD [rbp-56], rax
-WHC_23:
+WHC_39:
 	push QWORD [rbp-56]
 	push QWORD [rbp-24]
 	pop rbx
@@ -825,7 +1334,7 @@ WHC_23:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_24
+	je WHE_40
 	push QWORD [rbp-48]
 	push QWORD [rbp-8]
 	push QWORD [rbp-56]
@@ -861,15 +1370,15 @@ WHC_23:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_23
-WHE_24:
+	jmp WHC_39
+WHE_40:
 	lea rax, [rbp-56]
 	push rax
 	push 0
 	pop rax
 	pop rbx
 	mov [rbx], rax
-WHC_25:
+WHC_41:
 	push QWORD [rbp-56]
 	push QWORD [rbp-32]
 	pop rbx
@@ -880,7 +1389,7 @@ WHC_25:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_26
+	je WHE_42
 	push QWORD [rbp-48]
 	push QWORD [rbp-16]
 	push QWORD [rbp-56]
@@ -916,8 +1425,8 @@ WHC_25:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_25
-WHE_26:
+	jmp WHC_41
+WHE_42:
 	push QWORD [rbp-40]
 	pop rax
 	mov rsp, rbp
@@ -935,7 +1444,7 @@ streq:
 	push 0
 	pop rax
 	mov QWORD [rbp-32], rax
-WHC_27:
+WHC_43:
 	push QWORD [rbp-32]
 	push QWORD [rbp-24]
 	pop rbx
@@ -946,7 +1455,7 @@ WHC_27:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_28
+	je WHE_44
 	push QWORD [rbp-8]
 	push QWORD [rbp-32]
 	pop rax
@@ -985,13 +1494,13 @@ WHC_27:
 	push rax
 	pop ax
 	cmp al, 0
-	je IF_29
+	je IF_45
 	push 0
 	pop rax
 	mov rsp, rbp
 	pop rbp
 	ret
-IF_29:
+IF_45:
 	push QWORD [rbp-8]
 	push QWORD [rbp-32]
 	pop rax
@@ -1018,13 +1527,13 @@ IF_29:
 	push rcx
 	pop ax
 	cmp al, 0
-	je IF_30
+	je IF_46
 	push 0
 	pop rax
 	mov rsp, rbp
 	pop rbp
 	ret
-IF_30:
+IF_46:
 	lea rax, [rbp-32]
 	push rax
 	push QWORD [rbp-32]
@@ -1036,102 +1545,36 @@ IF_30:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_27
-WHE_28:
+	jmp WHC_43
+WHE_44:
 	push 1
 	pop rax
 	mov rsp, rbp
 	pop rbp
 	ret
 
-check_num:
+rev_str:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 24
-	mov [rbp-8], rdi
-	mov [rbp-16], rsi
-	mov [rbp-24], rdx
-	push QWORD [rbp-24]
-	push QWORD [rbp-16]
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	sete cl
-	push rcx
-	pop ax
-	cmp al, 0
-	je IF_31
-	push STR_32
+	sub rsp, 48
+	; define str
+	push 17
 	pop rdi
-	call print
-	push QWORD [rbp-8]
-	pop rdi
-	call print
-	push STR_33
-	pop rdi
-	call print
-	push QWORD [rbp-24]
-	pop rdi
-	call fmt_hex
+	call alloc
 	push rax
-	pop rdi
-	call println
-IF_31:
-	push QWORD [rbp-24]
-	push QWORD [rbp-16]
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setne cl
-	push rcx
-	pop ax
-	cmp al, 0
-	je IF_34
-	push STR_35
-	pop rdi
-	call print
-	push QWORD [rbp-16]
-	pop rdi
-	call fmt_hex
-	push rax
-	pop rdi
-	call print
-	push STR_36
-	pop rdi
-	call print
-	push QWORD [rbp-24]
-	pop rdi
-	call fmt_hex
-	push rax
-	pop rdi
-	call println
-IF_34:
-	push 0
-	pop rax
-	mov rsp, rbp
-	pop rbp
-	ret
-
-test0:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 16
-	push STR_37
-	pop rdi
-	call println
-	; define i
-	push 0
 	pop rax
 	mov QWORD [rbp-8], rax
-	; define sum
-	push 0
+	; define base
+	push STR_47
 	pop rax
 	mov QWORD [rbp-16], rax
-WHC_38:
-	push QWORD [rbp-8]
-	push 100
+	; define i
+	push 0
+	pop rax
+	mov QWORD [rbp-24], rax
+WHC_48:
+	push QWORD [rbp-24]
+	push 16
 	pop rbx
 	pop rax
 	xor rcx, rcx
@@ -1140,21 +1583,29 @@ WHC_38:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_39
-	lea rax, [rbp-16]
-	push rax
+	je WHE_49
+	push QWORD [rbp-8]
+	push QWORD [rbp-24]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
 	push QWORD [rbp-16]
-	push QWORD [rbp-8]
-	pop rbx
-	pop rax
-	add rax, rbx
-	push rax
+	push QWORD [rbp-24]
 	pop rax
 	pop rbx
-	mov [rbx], rax
-	lea rax, [rbp-8]
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	lea rax, [rbp-24]
 	push rax
-	push QWORD [rbp-8]
+	push QWORD [rbp-24]
 	push 1
 	pop rbx
 	pop rax
@@ -1163,229 +1614,240 @@ WHC_38:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_38
-WHE_39:
-	push STR_40
-	push 4950
-	push QWORD [rbp-16]
-	pop rdx
-	pop rsi
-	pop rdi
-	call check_num
-	push rax
-	pop r13
-	mov rsp, rbp
-	pop rbp
-	ret
-
-test1:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-	push STR_41
+	jmp WHC_48
+WHE_49:
+	push QWORD [rbp-8]
 	pop rdi
 	call println
-	; define i
+	; define start
 	push 0
 	pop rax
-	mov QWORD [rbp-8], rax
-WHC_42:
-	push QWORD [rbp-8]
-	push 100
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setl cl
-	push rcx
-	pop rax
-	cmp rax, 0
-	je WHE_43
-	push QWORD [rbp-8]
-	push 42
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	sete cl
-	push rcx
-	pop ax
-	cmp al, 0
-	je IF_44
-	jmp WHE_43
-IF_44:
-	lea rax, [rbp-8]
-	push rax
-	push QWORD [rbp-8]
+	mov QWORD [rbp-32], rax
+	; define end
+	push 16
 	push 1
-	pop rbx
-	pop rax
-	add rax, rbx
-	push rax
-	pop rax
-	pop rbx
-	mov [rbx], rax
-	jmp WHC_42
-WHE_43:
-	push STR_45
-	push 42
-	push QWORD [rbp-8]
-	pop rdx
-	pop rsi
-	pop rdi
-	call check_num
-	push rax
-	pop r13
-	mov rsp, rbp
-	pop rbp
-	ret
-
-test2:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-	push STR_46
-	pop rdi
-	call println
-	; define i
-	push 0
-	pop rax
-	mov QWORD [rbp-8], rax
-WHC_47:
-	push QWORD [rbp-8]
-	push 100
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setl cl
-	push rcx
-	pop rax
-	cmp rax, 0
-	je WHE_48
-	lea rax, [rbp-8]
-	push rax
-	push QWORD [rbp-8]
-	push 1
-	pop rbx
-	pop rax
-	add rax, rbx
-	push rax
-	pop rax
-	pop rbx
-	mov [rbx], rax
-	push QWORD [rbp-8]
-	push 42
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setl cl
-	push rcx
-	pop ax
-	cmp al, 0
-	je IF_49
-	jmp WHC_47
-IF_49:
-	push QWORD [rbp-8]
-	push 42
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setl cl
-	push rcx
-	pop ax
-	cmp al, 0
-	je IF_50
-	push STR_51
-	pop rdi
-	call println
-	push 1
-	pop rdi
-	call exit
-IF_50:
-	jmp WHC_47
-WHE_48:
-	push STR_52
-	push 100
-	push QWORD [rbp-8]
-	pop rdx
-	pop rsi
-	pop rdi
-	call check_num
-	push rax
-	pop r13
-	mov rsp, rbp
-	pop rbp
-	ret
-
-test3:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 16
-	push STR_53
-	pop rdi
-	call println
-	; define i
-	push 0
-	pop rax
-	mov QWORD [rbp-8], rax
-WHC_54:
-	push QWORD [rbp-8]
-	push 100
-	pop rbx
-	pop rax
-	xor rcx, rcx
-	cmp rax, rbx
-	setl cl
-	push rcx
-	pop rax
-	cmp rax, 0
-	je WHE_55
-	lea rax, [rbp-8]
-	push rax
-	push QWORD [rbp-8]
-	push 1
-	pop rbx
-	pop rax
-	add rax, rbx
-	push rax
-	pop rax
-	pop rbx
-	mov [rbx], rax
-	; define j
-	push 42
-	pop rax
-	mov QWORD [rbp-16], rax
-	jmp WHC_54
-WHE_55:
-	push STR_56
-	push 100
-	push QWORD [rbp-8]
-	pop rdx
-	pop rsi
-	pop rdi
-	call check_num
-	push rax
-	pop r13
-	push STR_57
-	push 42
-	lea rax, [rbp-8]
-	push rax
-	push 8
 	pop rbx
 	pop rax
 	sub rax, rbx
 	push rax
 	pop rax
+	mov QWORD [rbp-40], rax
+WHC_50:
+	push QWORD [rbp-32]
+	push QWORD [rbp-40]
+	pop rbx
+	pop rax
+	xor rcx, rcx
+	cmp rax, rbx
+	setl cl
+	push rcx
+	pop rax
+	cmp rax, 0
+	je WHE_51
+	; define aux
+	push QWORD [rbp-8]
+	push QWORD [rbp-32]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	pop rax
 	push QWORD [rax]
-	pop rdx
-	pop rsi
-	pop rdi
-	call check_num
+	pop rax
+	mov QWORD [rbp-48], rax
+	push QWORD [rbp-8]
+	push QWORD [rbp-32]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push QWORD [rbp-8]
+	push QWORD [rbp-40]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	push QWORD [rbp-8]
+	push QWORD [rbp-40]
+	pop rax
+	pop rbx
+	imul rax, 1
+	add rbx, rax
+	push rbx
+	push QWORD [rbp-48]
+	pop rax
+	pop rbx
+	mov BYTE [rbx], al
+	lea rax, [rbp-32]
 	push rax
-	pop r13
+	push QWORD [rbp-32]
+	push 1
+	pop rbx
+	pop rax
+	add rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	lea rax, [rbp-40]
+	push rax
+	push QWORD [rbp-40]
+	push 1
+	pop rbx
+	pop rax
+	sub rax, rbx
+	push rax
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	jmp WHC_50
+WHE_51:
+	push QWORD [rbp-8]
+	pop rdi
+	call println
+	mov rsp, rbp
+	pop rbp
+	ret
+
+fooarrarr:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 16
+	mov [rbp-8], rdi
+	; define str
+	push QWORD [rbp-8]
+	push 1
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rax
+	mov QWORD [rbp-16], rax
+	push QWORD [rbp-16]
+	pop rdi
+	call println
+	push QWORD [rbp-8]
+	push 0
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rdi
+	call println
+	push QWORD [rbp-8]
+	push 1
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rdi
+	call println
+	push QWORD [rbp-8]
+	push 2
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rdi
+	call println
+	push QWORD [rbp-8]
+	push 3
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	pop rax
+	push QWORD [rax]
+	pop rdi
+	call println
+	mov rsp, rbp
+	pop rbp
+	ret
+
+arrarr:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 8
+	; define arr
+	push 4
+	push 8
+	pop rbx
+	pop rax
+	imul rax, rbx
+	push rax
+	pop rdi
+	call alloc
+	push rax
+	pop rax
+	mov QWORD [rbp-8], rax
+	push QWORD [rbp-8]
+	push 0
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	push STR_52
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	push QWORD [rbp-8]
+	push 1
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	push STR_53
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	push QWORD [rbp-8]
+	push 2
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	push STR_54
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	push QWORD [rbp-8]
+	push 3
+	pop rax
+	pop rbx
+	imul rax, 8
+	add rbx, rax
+	push rbx
+	push STR_55
+	pop rax
+	pop rbx
+	mov [rbx], rax
+	push QWORD [rbp-8]
+	pop rdi
+	call fooarrarr
 	mov rsp, rbp
 	pop rbp
 	ret
@@ -1394,10 +1856,8 @@ main:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 0
-	call test0
-	call test1
-	call test2
-	call test3
+	call rev_str
+	call arrarr
 	push 0
 	pop rax
 	mov rsp, rbp
@@ -1418,21 +1878,13 @@ section .rodata
 	STR_15: db "No bytes read :(", 0
 	STR_17: db "there is more to read...", 0
 	STR_19: db "there is NO more to read!", 0
-	STR_20: db "0123456789abcdef", 0
-	STR_32: db "OK: expected: (", 0
-	STR_33: db "), got: ", 0
-	STR_35: db "FAIL: expected ", 0
-	STR_36: db " but got ", 0
-	STR_37: db "====test0====", 0
-	STR_40: db "0x1356", 0
-	STR_41: db "====test1====", 0
-	STR_45: db "0x2a", 0
-	STR_46: db "====test2====", 0
-	STR_51: db "failed!", 0
-	STR_52: db "0x64", 0
-	STR_53: db "====test3====", 0
-	STR_56: db "0x64", 0
-	STR_57: db "0x2a", 0
+	STR_23: db "mod: ", 0
+	STR_36: db "0123456789abcdef", 0
+	STR_47: db "0123456789abcdef", 0
+	STR_52: db "hello0", 0
+	STR_53: db "hello1", 0
+	STR_54: db "hello2", 0
+	STR_55: db "hello3", 0
 	GLBL_SYS_READ: dq 0
 	GLBL_SYS_WRITE: dq 1
 	GLBL_SYS_OPEN: dq 2
