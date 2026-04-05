@@ -51,6 +51,6 @@ ld out.o -o out
 - for loops?;
 - hex literals;
 
-====MAYBE====
+### MAYBE
 - extern?
 - stricter implicit casting? (so more type errors);
