@@ -39,18 +39,18 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-@sizeof
-#include or similar (modules directly?), not a single monster file
+- @sizeof
+- #include or similar (modules directly?), not a single monster file
 
 ### NTH
-stack spillout for >6 function arguments;
-move more stuff to intrinsics? (assembly);
-string struct? so dont have to pass len + text everyfuckingwhere
-error lines;
-`__FILE__` and `__LINE__`;
-for loops?;
-hex literals;
+- stack spillout for >6 function arguments;
+- move more stuff to intrinsics? (assembly);
+- string struct? so dont have to pass len + text everyfuckingwhere
+- error lines;
+- `__FILE__` and `__LINE__`;
+- for loops?;
+- hex literals;
 
 ====MAYBE====
-extern?
-stricter implicit casting? (so more type errors);
+- extern?
+- stricter implicit casting? (so more type errors);
