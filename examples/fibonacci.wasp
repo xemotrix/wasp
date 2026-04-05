@@ -1,0 +1,103 @@
+const SYS_WRITE:int = 1;
+const SYS_MMAP:int   = 9;
+const SYS_MUNMAP:int = 11;
+
+const PROT_READ:int     = 1;
+const PROT_WRITE:int    = 3;
+const MAP_PRIVATE:int   = 2;
+const MAP_ANONYMOUS:int = 32;
+
+const STDOUT:int = 1;
+
+fn write(str:*char, len:int) int {
+    return syscall(SYS_WRITE, STDOUT, str, len);
+}
+
+fn strlen(str:*char) int {
+    i:int = 0;
+    while str[i] != '\0' { i = i+1; }
+    return i;
+}
+
+fn print(str:*char) {
+    write(str, strlen(str));
+}
+
+fn munmap(addr:int, size:int) int {
+    return syscall(SYS_MUNMAP, addr, size);
+}
+
+fn mmap(size:int) int {
+    fd:int = -1;
+    offset:int = 0;
+    addr:int=0;
+    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+}
+
+fn alloc(size:int) int {
+    ptr:*int = mmap(size+8);
+    *ptr = size;
+    return ptr+8;
+}
+
+fn free(ptr:*int) int {
+    size:int = ptr[-8];
+    return munmap(ptr-8, size+8);
+}
+
+fn fmt_dec(num:int) *char {
+    out:*char = alloc(20);
+    idx:int = 0;
+    if num < 0 {
+        out[idx] = '-';
+        num = -num;
+        idx=idx+1;
+    }
+    if num == 0 {
+        out[0] = '0';
+        return out;
+    }
+    start:int = idx;
+    while num != 0 {
+        mod:int = num % 10;
+        // no casting between int and char yet :(
+        if mod == 0 { out[idx] = '0'; }
+        if mod == 1 { out[idx] = '1'; }
+        if mod == 2 { out[idx] = '2'; }
+        if mod == 3 { out[idx] = '3'; }
+        if mod == 4 { out[idx] = '4'; }
+        if mod == 5 { out[idx] = '5'; }
+        if mod == 6 { out[idx] = '6'; }
+        if mod == 7 { out[idx] = '7'; }
+        if mod == 8 { out[idx] = '8'; }
+        if mod == 9 { out[idx] = '9'; }
+        idx = idx+1;
+        num = num / 10;
+    }
+    end:int = idx-1;
+    while start < end {
+        aux:char = out[start];
+        out[start] = out[end];
+        out[end] = aux;
+        start=start+1;
+        end=end-1;
+    }
+    return out;
+}
+
+fn main() {
+    a:int = 0;
+    b:int = 1;
+
+    print("Fibonacci sequence:\n");
+    n:int = 100; // last numbers will overflow 64 bits
+
+    i:int = 0;
+    while i < n {
+        print(fmt_dec(a)); print("\n");
+        next:int = a + b;
+        a = b;
+        b = next;
+        i=i+1;
+    }
+}

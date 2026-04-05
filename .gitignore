@@ -1,0 +1,10 @@
+*.o
+*.asm
+out
+out.s
+lang
+.gdb_history
+boo
+bootstrap
+boot.s
+wasp

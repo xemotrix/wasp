@@ -1,0 +1,566 @@
+////////////////////////////////////
+// STDLIB                         //
+////////////////////////////////////
+const SYS_READ:int   = 0;
+const SYS_WRITE:int  = 1;
+const SYS_OPEN:int   = 2;
+const SYS_MMAP:int   = 9;
+const SYS_MUNMAP:int = 11;
+const SYS_EXIT:int   = 60;
+
+const PROT_READ:int     = 1;
+const PROT_WRITE:int    = 3;
+const MAP_PRIVATE:int   = 2;
+const MAP_ANONYMOUS:int = 32;
+
+const STDOUT:int = 1;
+
+fn strlen(str:*char) int {
+    i:int = 0;
+    while str[i] != '\0' {
+        i = i+1;
+    }
+    return i;
+}
+
+fn write(str:*char, len:int) int {
+    return syscall(SYS_WRITE, STDOUT, str, len);
+}
+
+fn print(str:*char) {
+    len:int = strlen(str);
+    write(str, len);
+}
+
+fn println(str:*char) {
+    print(str);
+    print("\n");
+}
+
+fn exit(code:int) {
+    syscall(SYS_EXIT, code);
+}
+
+fn strncmp(a:*char, b:*char, len:int) bool {
+    i:int = 0;
+    while i < len {
+        if a[i] != b[i] {
+            return false;
+        }
+        i=i+1;
+    }
+    return true;
+}
+
+fn munmap(addr:int, size:int) int {
+    return syscall(SYS_MUNMAP, addr, size);
+}
+
+fn mmap(size:int) int {
+    fd:int = -1;
+    offset:int = 0;
+    addr:int=0;
+    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+}
+
+fn alloc(size:int) int {
+    ptr:*int = mmap(size+8);
+    *ptr = size;
+    return ptr+8;
+}
+
+fn realloc(old_ptr:*int, new_size:int) int {
+    old_size:int = old_ptr[-1];
+    if new_size < old_size {
+        return old_ptr; // memory is cheap lmao
+    }
+    new_ptr:*int = alloc(new_size);
+    offset:int = 0;
+    while (offset < old_size) {
+        new_ptr[offset] = old_ptr[offset];
+        offset=offset+8;
+    }
+    return new_ptr;
+}
+
+fn free(ptr:*int) int {
+    size:int = ptr[-8];
+    return munmap(ptr-8, size+8);
+}
+
+fn open(filename:*char) int {
+    return syscall(SYS_OPEN, filename, 0, 0);
+}
+
+fn read(fd:int, buf:*char, count:int) int {
+    return syscall(SYS_READ, fd, buf, count);
+}
+
+fn read_file(filename:*char) *char {
+    fd:int = open(filename);
+    if fd < 0 {
+        println("Error reading file");
+        exit(1);
+    }
+    buf:*char = alloc(4096*100);
+    to_read:int = 1024;
+    chunk_c:int = 0;
+    while true {
+        bread:int = read(fd, buf+chunk_c*to_read, to_read);
+        if bread == 0 {
+            println("No bytes read :(");
+            exit(1);
+        }
+        if bread == to_read {
+            println("there is more to read...");
+        }
+        if bread != to_read {
+            println("there is NO more to read!");
+            break;
+        }
+        chunk_c = chunk_c + 1;
+    }
+    return buf;
+}
+
+fn fmt_hex(num:int) *char {
+    out:*char = alloc(16+3);
+    hex:*char = "0123456789abcdef";
+    *out = '0';
+    *(out+1) = 'x';
+    i:int=0;
+    shift:int;
+    idx:int;
+    while i < 16 {
+        shift = (15-i) * 4;
+        idx = (num>>shift)&15;
+        out[i+2] = hex[idx];
+        i=i+1;
+    }
+    out[16+3] = '\0';
+    return out;
+}
+
+fn strcat(a:*char, b:*char) *char {
+    lena:int = strlen(a);
+    lenb:int = strlen(b);
+    new:*char = alloc(lena+lenb);
+    ptr:*char = new;
+    i:int = 0;
+    while i < lena {
+        *ptr = a[i];
+        ptr=ptr+1;
+        i=i+1;
+    }
+    i = 0;
+    while i < lenb {
+        *ptr = b[i];
+        ptr=ptr+1;
+        i=i+1;
+    }
+    return new;
+}
+
+fn streq(a:*char, b:*char, len:int) bool {
+    i:int = 0;
+    while i < len {
+        if a[i] == '\0' || b[i] == '\0' {
+            return false;
+        }
+        if a[i] != b[i] {
+            return false;
+        }
+        i=i+1;
+    }
+    return true;
+} 
+
+////////////////////////////////////
+// TEST                           //
+////////////////////////////////////
+
+struct What {
+    one: int;
+    two: int;
+}
+
+struct Lmao {
+    aaaa: int;
+    bbbb: int;
+    pppp: *What;
+}
+
+struct Test {
+    name: int;
+    xd: Lmao;
+}
+
+fn check_num(expected_str:*char, expected: int, num:int) {
+    if num == expected {
+        print("OK: expected: (");
+        print(expected_str);
+        print("), got: ");
+        println(fmt_hex(num));
+    }
+    if num != expected {
+        print("FAIL: expected ");
+        print(fmt_hex(expected));
+        print(" but got ");
+        println(fmt_hex(num));
+    }
+    return;
+}
+
+fn test0() {
+    println("=====test0=====");
+    i:Test;
+    i.name =  54491065313;
+    i.xd.aaaa = 54491065314;
+    i.xd.bbbb = 54491065315;
+
+    check_num("0xcafebabe1", 54491065313, i.name);
+    check_num("0xcafebabe2", 54491065314, i.xd.aaaa);
+    check_num("0xcafebabe3", 54491065315, i.xd.bbbb);
+
+    new_lmao:Lmao;
+    new_lmao.aaaa=15;
+    new_lmao.bbbb=15<<8;
+    check_num("0x00f", 15, new_lmao.aaaa);
+    check_num("0xf00",15<<8, new_lmao.bbbb);
+
+    i.xd = new_lmao;
+
+    check_num("0x00f", 15, i.xd.aaaa);
+    check_num("0xf00", 15<<8, i.xd.bbbb);
+
+    w:*What = alloc(16);
+    w.one = (1<<8)+1;
+    w.two = (2<<8)+2;
+
+    i.xd.pppp=w;
+
+    check_num("0x101",w.one, i.xd.pppp.one);
+    check_num("0x202",w.two, i.xd.pppp.two);
+    
+    i.xd.pppp.one = 3;
+    i.xd.pppp.two = 5;
+
+    check_num("0x3", 3, i.xd.pppp.one);
+    check_num("0x5", 5, i.xd.pppp.two);
+
+    oof:Lmao = i.xd;
+
+    check_num("0x3", 3, oof.pppp.one);
+    check_num("0x5", 5, oof.pppp.two);
+
+    check_num("0x3", 3, i.xd.pppp.one);
+    check_num("0x5", 5, i.xd.pppp.two);
+}
+
+fn test1() {
+    println("=====test1=====");
+    a:Test;
+    b:Lmao;
+
+    b.bbbb = 15;
+    a.xd = b;
+    check_num("0x0000f", 15, a.xd.bbbb);
+
+    w:*What = alloc(16);
+    w.one = 15<<8;
+    w.two = 15<<16;
+    
+    a.xd.pppp = w;
+
+    check_num("0x00f00", 15<<8, a.xd.pppp.one);
+    check_num("0xf0000", 15<<16, a.xd.pppp.two);
+}
+
+fn test2() {
+    println("=====test2=====");
+    a:Test;
+    b:Lmao;
+
+    a2:Test;
+    b2:Lmao;
+
+    a2.xd.aaaa = 15;
+    a2.xd.bbbb = 14;
+    check_num("0xf", 15, a2.xd.aaaa);
+    check_num("0xe", 14, a2.xd.bbbb);
+
+    a.xd = a2.xd;
+    check_num("0xf", 15, a.xd.aaaa);
+    check_num("0xe", 14, a.xd.bbbb);
+
+    check_num("0xf", a2.xd.aaaa, a.xd.aaaa);
+    check_num("0xe", a2.xd.bbbb, a.xd.bbbb);
+}
+
+fn test3() {
+    println("=====test3=====");
+    a:Test;
+    a.xd.bbbb = 15;
+    a.xd.aaaa = 14;
+
+    ptr1:*int = &a.xd.bbbb;
+    res:int = *ptr1;
+    check_num("0xf", 15, a.xd.bbbb);
+    check_num("0xf", 15, res);
+
+    ptr2:*Lmao = &a.xd;
+    b:Lmao;
+    
+    b = *ptr2;
+    check_num("0xf", 15, b.bbbb);
+}
+
+fn foo4(a:int, w:What, b:int) int {
+    w2:What = w;
+    w2.two = 3;
+    return a + w2.two + w.two + b;
+}
+fn test4() {
+    println("=====test4=====");
+    t:Test;
+    t.name = 1;
+    t.xd.aaaa = 2;
+    t.xd.bbbb = 3;
+    t.xd.pppp = alloc(16);
+    t.xd.pppp.one = 14;
+    t.xd.pppp.two = 15;
+    res:int = foo4(1, *(t.xd.pppp), 2);
+    check_num("0x15", 21, res);
+}
+
+fn foo5(w:What) int {
+    w.two = 42;
+    return w.two;
+}
+fn test5() {
+    println("=====test5=====");
+    w:What;
+    w.one = 14;
+    w.two = 15;
+    res:int = foo5(w);
+    check_num("0x2a", 42, res);
+    check_num("0x0f", 15, w.two);
+}
+
+fn foo6(w1:What, w2:What) int {
+    return w1.one + w2.two;
+}
+
+fn test6() {
+    println("=====test6=====");
+    w1:What;
+    w1.one = 20;
+    w2:What;
+    w2.two = 22;
+    res:int = foo6(w1, w2);
+    check_num("0x2a", 42, res);
+}
+
+fn foo7(a:int, b:int) What {
+    w:What;
+    w.one = a;
+    w.two = b;
+    return w;
+}
+fn test7() {
+    println("=====test7=====");
+    w:What = foo7(14, 15);
+    res:int = w.one+w.two;
+    check_num("0x1d", 29, res);
+}
+
+fn bar8() What {
+    w:What;
+    w.one = 3;
+    w.two = 4;
+    return w;
+}
+fn foo8(s:What) int {
+    s = bar8();
+    res:int = s.one + s.two;
+    return res;
+}
+fn test8() {
+    println("=====test8=====");
+    w:What;
+    w.one = 14;
+    w.two = 15;
+    res:int = foo8(w);
+    check_num("0x7", 7, res);
+    check_num("0x1d", 29, w.one + w.two);
+}
+
+fn bar9(s:What) int {
+    check_num("0x0e", 14, s.one);
+    check_num("0x45", 69, s.two);
+    s.one = 42;
+    check_num("0x2a", 42, s.one);
+    check_num("0x45", 69, s.two);
+    return 0;
+}
+fn foo9(s:What) int {
+    check_num("0x0e", 14, s.one);
+    check_num("0x0f", 15, s.two);
+    s.two = 69;
+    bar9(s);
+    check_num("0x0e", 14, s.one);
+    check_num("0x45", 69, s.two);
+    return 0;
+}
+fn test9() {
+    println("=====test9=====");
+    w:What;
+    w.one = 14;
+    w.two = 15;
+    foo9(w);
+    check_num("0x0e", 14, w.one);
+    check_num("0x0f", 15, w.two);
+}
+
+fn test10() {
+    println("=====test10=====");
+    arr:*What = alloc(4 * 16);
+    w1:What;
+    w1.one = 1;
+    w1.two = 2;
+    arr[1] = w1;
+
+    resw:What = arr[1];
+    check_num("0x1", 1, resw.one);
+    check_num("0x2", 2, resw.two);
+}
+
+fn foo11(n:int) What {
+    w:What;
+    w.one = n;
+    w.two = n+1;
+    return w;
+}
+fn test11() {
+    println("=====test11=====");
+    arr:*What = alloc(4 * 16);
+    i:int = 0;
+    while i < 100 {
+        arr[i] = foo11(i);
+        i=i+1;
+    }
+    n:int = 42;
+    resw:What = arr[n];
+    check_num("0x2a", n, resw.one);
+    check_num("0x2b", n+1, resw.two);
+}
+
+fn bar12() What {
+    w:What;
+    w.one = 1;
+    w.two = 2;
+    return w;
+}
+fn foo12() What {
+    return bar12();
+}
+fn test12() {
+    println("=====test12=====");
+    res:What = foo12();
+    check_num("0x1", 1, res.one);
+    check_num("0x2", 2, res.two);
+}
+
+var XD:*What = 0;
+fn test13() {
+    println("=====test13=====");
+    XD = alloc(16);
+    XD.one = 12;
+    XD.two = 13;
+    check_num("0xc", 12, XD.one);
+    check_num("0xd", 13, XD.two);
+}
+
+struct WhatArr {
+    warray: *What;
+    len: int;
+    cap: int;
+}
+var WARR:*WhatArr = 0;
+var OOPS:*WhatArr = 0;
+fn test14() {
+    println("=====test14=====");
+    WARR = alloc(24);
+    WARR.len = 1;
+    WARR.cap = 2;
+    some_ptr:*void = alloc(400);
+    WARR.warray = some_ptr;
+
+    check_num("some ptr", some_ptr, WARR.warray);
+    check_num("0x1", 1, WARR.len);
+    check_num("0x2", 2, WARR.cap);
+}
+
+var W1:*What= 0;
+var W2:*What= 0;
+fn test15() {
+    println("=====test15=====");
+    W1 = alloc(24);
+    W1.one = 1;
+    W1.two = 2;
+    W2 = alloc(24);
+    W2.one = 3;
+    W2.two = 4;
+
+    check_num("0x1", 1, W1.one);
+    check_num("0x2", 2, W1.two);
+    check_num("0x3", 3, W2.one);
+    check_num("0x4", 4, W2.two);
+}
+fn foo16 (w:*What) {
+    w.one = 15;
+}
+fn bar16 (w:What) {
+    xd:*What = &w;
+    foo16(xd);
+    w.one;
+    check_num("0xf", 15, w.one);
+    check_num("0x2", 2, w.two);
+}
+fn test16() {
+    println("=====test16=====");
+    w:What;
+    w.one = 1;
+    w.two = 2;
+    bar16(w);
+    check_num("0xf", 1, w.one);
+    check_num("0x2", 2, w.two);
+}
+
+fn main() int {
+    test0();
+    test1();
+    test2();
+    test3();
+    test4();
+    test5();
+    test6();
+    test7();
+    test8();
+    test9();
+    test10();
+    test11();
+    test12();
+    test13();
+    test14();
+    test15();
+    test16();
+
+    return 0;
+}
+
+// b+XX  last field
+// b+16  ....
+// b+08  second field
+// b+00  << Struct start (first field)
+
