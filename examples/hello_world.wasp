@@ -2,7 +2,7 @@ const SYS_WRITE:int = 1;
 const STDOUT:int = 1;
 
 fn write(str:*char, len:int) int {
-    return syscall(SYS_WRITE, STDOUT, str, len);
+    return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
 fn strlen(str:*char) int {

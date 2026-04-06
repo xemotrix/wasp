@@ -2299,7 +2299,6 @@ fn tc_var(varr:*AST_Expr_Var) Type {
 fn tc_expr(expr:*AST_Expr) {
     if expr.kind == AST_EXPR_BUILTIN {
         if expr.builtin == BUILTIN_SIZE {
-            // not the prettiest
             sym_fill_index_if_struct(&expr.ty);
             size:int = size_of_type(expr.ty);
             expr.kind = AST_EXPR_LIT_INT;

@@ -10,7 +10,7 @@ const MAP_ANONYMOUS:int = 32;
 const STDOUT:int = 1;
 
 fn write(str:*char, len:int) int {
-    return syscall(SYS_WRITE, STDOUT, str, len);
+    return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
 fn strlen(str:*char) int {
@@ -24,14 +24,14 @@ fn print(str:*char) {
 }
 
 fn munmap(addr:int, size:int) int {
-    return syscall(SYS_MUNMAP, addr, size);
+    return @syscall(SYS_MUNMAP, addr, size);
 }
 
 fn mmap(size:int) int {
     fd:int = -1;
     offset:int = 0;
     addr:int=0;
-    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
 }
 
 fn alloc(size:int) int {

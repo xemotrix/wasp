@@ -11,7 +11,7 @@ const MAP_ANONYMOUS:int = 32;
 const STDOUT:int = 1;
 
 fn write(str:*char, len:int) int {
-    return syscall(SYS_WRITE, STDOUT, str, len);
+    return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
 fn strlen(str:*char) int {
@@ -25,14 +25,14 @@ fn print(str:*char) {
 }
 
 fn munmap(addr:int, size:int) int {
-    return syscall(SYS_MUNMAP, addr, size);
+    return @syscall(SYS_MUNMAP, addr, size);
 }
 
 fn mmap(size:int) int {
     fd:int = -1;
     offset:int = 0;
     addr:int=0;
-    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
 }
 
 fn alloc(size:int) int {
@@ -141,15 +141,15 @@ fn iter() {
 }
 
 fn init_board() **char {
-    board:**char = alloc(SIZEY*8);
+    board:**char = alloc(SIZEY*@size(*char));
     i:int = 0;
     while i < SIZEY {
-        board[i] = alloc(SIZEX*1 + 1);
+        board[i] = alloc(SIZEX*@size(char) + 1);
         j:int = 0;
         while j < SIZEX {
             board[i][j] = '.';
             rand:int = 0;
-            syscall(SYS_GETRANDOM, &rand, 8, 0);
+            @syscall(SYS_GETRANDOM, &rand, 8, 0);
             if rand % 7 == 0 {
                 board[i][j] = '#';
             }
