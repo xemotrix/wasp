@@ -24,7 +24,7 @@ fn strlen(str:*char) int {
 }
 
 fn write(str:*char, len:int) int {
-    return syscall(SYS_WRITE, STDOUT, str, len);
+    return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
 fn print(str:*char) {
@@ -38,7 +38,7 @@ fn println(str:*char) {
 }
 
 fn exit(code:int) {
-    syscall(SYS_EXIT, code);
+    @syscall(SYS_EXIT, code);
 }
 
 fn strncmp(a:*char, b:*char, len:int) bool {
@@ -53,14 +53,14 @@ fn strncmp(a:*char, b:*char, len:int) bool {
 }
 
 fn munmap(addr:int, size:int) int {
-    return syscall(SYS_MUNMAP, addr, size);
+    return @syscall(SYS_MUNMAP, addr, size);
 }
 
 fn mmap(size:int) int {
     fd:int = -1;
     offset:int = 0;
     addr:int=0;
-    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
 }
 
 fn alloc(size:int) int {
@@ -89,11 +89,11 @@ fn free(ptr:*int) int {
 }
 
 fn open(filename:*char) int {
-    return syscall(SYS_OPEN, filename, 0, 0);
+    return @syscall(SYS_OPEN, filename, 0, 0);
 }
 
 fn read(fd:int, buf:*char, count:int) int {
-    return syscall(SYS_READ, fd, buf, count);
+    return @syscall(SYS_READ, fd, buf, count);
 }
 
 fn read_file(filename:*char) *char {

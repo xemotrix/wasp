@@ -31,11 +31,11 @@ fn strlen(str:*char) int {
 }
 
 fn write_to(fd:int, str:*char, len:int) int {
-    return syscall(SYS_WRITE, fd, str, len);
+    return @syscall(SYS_WRITE, fd, str, len);
 }
 
 fn write(str:*char, len:int) int {
-    return syscall(SYS_WRITE, STDOUT, str, len);
+    return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
 fn print(str:*char) {
@@ -49,7 +49,7 @@ fn println(str:*char) {
 }
 
 fn exit(code:int) {
-    syscall(SYS_EXIT, code);
+    @syscall(SYS_EXIT, code);
 }
 
 fn strncmp(a:*char, b:*char, len:int) bool {
@@ -64,14 +64,14 @@ fn strncmp(a:*char, b:*char, len:int) bool {
 }
 
 fn munmap(addr:int, size:int) int {
-    return syscall(SYS_MUNMAP, addr, size);
+    return @syscall(SYS_MUNMAP, addr, size);
 }
 
 fn mmap(size:int) int {
     fd:int = -1;
     offset:int = 0;
     addr:int=0;
-    return syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
 }
 
 fn alloc(size:int) int {
@@ -102,15 +102,15 @@ fn free(ptr:*int) int {
 }
 
 fn open(filename:*char, flags:int, mode:int) int {
-    return syscall(SYS_OPEN, filename, flags, mode);
+    return @syscall(SYS_OPEN, filename, flags, mode);
 }
 
 fn close(fd:int) int {
-    return syscall(SYS_CLOSE, fd);
+    return @syscall(SYS_CLOSE, fd);
 }
 
 fn read(fd:int, buf:*char, count:int) int {
-    return syscall(SYS_READ, fd, buf, count);
+    return @syscall(SYS_READ, fd, buf, count);
 }
 
 fn read_file(filename:*char) *char {
@@ -253,54 +253,55 @@ fn assert(expr:bool) {
 ////////////////////////////////////
 
 const TOK_IDEN:int         = 0;
-const TOK_LIT_INT:int      = 1;
-const TOK_LIT_BOOL:int     = 2;
-const TOK_LIT_STRING:int   = 3;
-const TOK_LIT_CHAR:int     = 4;
-const TOK_TY_VOID:int      = 5;
-const TOK_TY_INT:int       = 6;
-const TOK_TY_BOOL:int      = 7;
-const TOK_TY_CHAR:int      = 8;
-const TOK_KW_IF:int        = 9;
-const TOK_KW_WHILE:int     = 10;
-const TOK_KW_BREAK:int     = 11;
-const TOK_KW_RETURN:int    = 12;
-const TOK_KW_CONST:int     = 13;
-const TOK_KW_VAR:int       = 14;
-const TOK_KW_STRUCT:int    = 15;
-const TOK_KW_CONTINUE:int  = 16;
-const TOK_KW_FN:int        = 17;
-const TOK_BANG:int         = 18;
-const TOK_TILDE:int        = 19;
-const TOK_EQUALSEQUALS:int = 20;
-const TOK_BANGEQUALS:int   = 21;
-const TOK_GT:int           = 22;
-const TOK_GTE:int          = 23;
-const TOK_LT:int           = 24;
-const TOK_LTE:int          = 25;
-const TOK_AND:int          = 26;
-const TOK_OR:int           = 27;
-const TOK_BIT_OR:int       = 28;
-const TOK_AMPERSAND:int    = 29;
-const TOK_PLUS:int         = 30;
-const TOK_MINUS:int        = 31;
-const TOK_SHIFT_LEFT:int   = 32;
-const TOK_SHIFT_RIGHT:int  = 33;
-const TOK_ASTERISK:int     = 34;
-const TOK_PERCENT:int      = 35;
-const TOK_SLASH:int        = 36;
-const TOK_PERIOD:int       = 37;
-const TOK_EQUALS:int       = 38;
-const TOK_SEMICOLON:int    = 39;
-const TOK_COLON:int        = 40;
-const TOK_COMMA:int        = 41;
-const TOK_LPAREN:int       = 42;
-const TOK_RPAREN:int       = 43;
-const TOK_LCURLY:int       = 44;
-const TOK_RCURLY:int       = 45;
-const TOK_LSQBR:int        = 46;
-const TOK_RSQBR:int        = 47;
-const TOK_EOF:int          = 48;
+const TOK_BUILTIN:int      = 1;
+const TOK_LIT_INT:int      = 2;
+const TOK_LIT_BOOL:int     = 3;
+const TOK_LIT_STRING:int   = 4;
+const TOK_LIT_CHAR:int     = 5;
+const TOK_TY_VOID:int      = 6;
+const TOK_TY_INT:int       = 7;
+const TOK_TY_BOOL:int      = 8;
+const TOK_TY_CHAR:int      = 9;
+const TOK_KW_IF:int        = 10;
+const TOK_KW_WHILE:int     = 11;
+const TOK_KW_BREAK:int     = 12;
+const TOK_KW_RETURN:int    = 13;
+const TOK_KW_CONST:int     = 14;
+const TOK_KW_VAR:int       = 15;
+const TOK_KW_STRUCT:int    = 16;
+const TOK_KW_CONTINUE:int  = 17;
+const TOK_KW_FN:int        = 18;
+const TOK_BANG:int         = 19;
+const TOK_TILDE:int        = 20;
+const TOK_EQUALSEQUALS:int = 21;
+const TOK_BANGEQUALS:int   = 22;
+const TOK_GT:int           = 23;
+const TOK_GTE:int          = 24;
+const TOK_LT:int           = 25;
+const TOK_LTE:int          = 26;
+const TOK_AND:int          = 27;
+const TOK_OR:int           = 28;
+const TOK_BIT_OR:int       = 29;
+const TOK_AMPERSAND:int    = 30;
+const TOK_PLUS:int         = 31;
+const TOK_MINUS:int        = 32;
+const TOK_SHIFT_LEFT:int   = 33;
+const TOK_SHIFT_RIGHT:int  = 34;
+const TOK_ASTERISK:int     = 35;
+const TOK_PERCENT:int      = 36;
+const TOK_SLASH:int        = 37;
+const TOK_PERIOD:int       = 38;
+const TOK_EQUALS:int       = 39;
+const TOK_SEMICOLON:int    = 40;
+const TOK_COLON:int        = 41;
+const TOK_COMMA:int        = 42;
+const TOK_LPAREN:int       = 43;
+const TOK_RPAREN:int       = 44;
+const TOK_LCURLY:int       = 45;
+const TOK_RCURLY:int       = 46;
+const TOK_LSQBR:int        = 47;
+const TOK_RSQBR:int        = 48;
+const TOK_EOF:int          = 49;
 
 struct Token {
   type:int;
@@ -331,7 +332,7 @@ fn peek_token(src:*char) Token {
     }
 
     if is_digit(*src) { return lex_num(src); }
-    if is_alpha(*src) { return lex_iden(src); }
+    if is_alpha(*src) || *src == '@' { return lex_iden(src); }
     if *src == '"' { return lex_string(src); }
     if *src == '\'' { return lex_char(src); }
 
@@ -413,7 +414,7 @@ fn peek_token(src:*char) Token {
 }
 
 fn lex_iden(src:*char) Token {
-    c:int = 0;
+    c:int = 1;
     while is_alpha(src[c]) || is_digit(src[c]) || src[c] == '_' {
         c = c+1;
     }
@@ -451,8 +452,10 @@ fn lex_iden(src:*char) Token {
     if c == 8 {
         if streq(src, "continue", c) { t.type = TOK_KW_CONTINUE; }
     }
-    if (t.type < 0) { t.type = TOK_IDEN; }
-
+    if (t.type < 0) {
+        if *src == '@' { t.type = TOK_BUILTIN; }
+        if *src != '@' { t.type = TOK_IDEN; }
+    }
     return t;
 }
 
@@ -587,6 +590,7 @@ const AST_EXPR_VAR:int        = 4;
 const AST_EXPR_BINOP:int      = 5;
 const AST_EXPR_UNOP:int       = 6;
 const AST_EXPR_CALL:int       = 7;
+const AST_EXPR_BUILTIN:int    = 8;
 
 struct AST_Expr_Var {
     name:*char;
@@ -626,9 +630,13 @@ struct AST_Expr_Call {
     fun_expr:*AST_Expr;
     args:*AST_Expr;
     args_len:int;
-    is_syscall:bool;
     temporary_sym_idxs:*int;
     temporary_sret_sym_idx:int;
+}
+
+struct AST_Expr_Builtin {
+    name:*char;
+    name_len:int;
 }
 
 struct AST_Expr {
@@ -641,9 +649,10 @@ struct AST_Expr {
     binop:AST_Expr_Binop;
     unop:AST_Expr_Unop;
     call:AST_Expr_Call;
+    builtin:AST_Expr_Builtin;
     ty:Type;
 }
-const SIZEOF_AST_Expr:int = 208;
+const SIZEOF_AST_Expr:int = 224;
 
 ///// STATEMENTS ///////////////////
 
@@ -702,7 +711,7 @@ struct AST_Stmt {
     returnn:AST_Stmt_Return;
     raw_expr:AST_Expr;
 }
-const SIZEOF_AST_Stmt:int = 816;
+const SIZEOF_AST_Stmt:int = 864;
 
 ///// DEFINITIONS //////////////////
 
@@ -767,6 +776,14 @@ fn parse_var(t:Token) AST_Expr {
     e.varr.name = t.text;
     e.varr.name_len = t.text_len;
     e.varr.sym_idx = -1;
+    return e;
+}
+
+fn parse_builtin(t:Token) AST_Expr {
+    e:AST_Expr;
+    e.kind = AST_EXPR_BUILTIN;
+    e.builtin.name = t.text;
+    e.builtin.name_len = t.text_len;
     return e;
 }
 
@@ -860,11 +877,9 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
     expr:AST_Expr;
     expr.kind = AST_EXPR_CALL;
 
-    assert(fun_expr.kind == AST_EXPR_VAR);
+    assert(fun_expr.kind == AST_EXPR_VAR || fun_expr.kind == AST_EXPR_BUILTIN);
     expr.call.fun_expr = alloc(SIZEOF_AST_Expr);
     *expr.call.fun_expr = fun_expr;
-    expr.call.is_syscall = fun_expr.varr.name_len == 7
-                           && streq(fun_expr.varr.name, "syscall", 7);
 
     t = lex_token(src);
     if t.type != TOK_LPAREN { error("Expected '('"); }
@@ -939,6 +954,7 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
     if t.type == TOK_LIT_STRING { left = parse_lit_string(t); }
     if t.type == TOK_LIT_CHAR { left = parse_lit_char(t); }
     if t.type == TOK_IDEN { left = parse_var(t); }
+    if t.type == TOK_BUILTIN { left = parse_builtin(t); }
     if t.type == TOK_LPAREN {
         t = lex_token(src);
         left = parse_expr(src, t);
@@ -1072,10 +1088,18 @@ fn parse_stmt_define(src:**char, t:Token) AST_Stmt {
 }
 
 fn parse_stmt_assign_or_raw_expr(src:**char, t:Token) AST_Stmt {
+    is_builtin:bool = t.type == TOK_BUILTIN;
     stmt:AST_Stmt;
     lvalue:AST_Expr = parse_expr(src, t);
 
     t = lex_token(src);
+
+    if is_builtin {
+        if t.type != TOK_SEMICOLON { error("expected ';'"); }
+        stmt.kind = AST_STMT_RAW_EXPR;
+        stmt.raw_expr = lvalue;
+        return stmt;
+    }
 
     if t.type == TOK_SEMICOLON {
         stmt.kind = AST_STMT_RAW_EXPR;
@@ -1155,6 +1179,9 @@ fn parse_stmt(src:**char, t:Token) AST_Stmt {
         if pt.type == TOK_COLON {
             return parse_stmt_define(src, t);
         }
+        return parse_stmt_assign_or_raw_expr(src, t);
+    }
+    if t.type == TOK_BUILTIN {
         return parse_stmt_assign_or_raw_expr(src, t);
     }
     if t.type == TOK_ASTERISK { return parse_stmt_assign_or_raw_expr(src, t); }
@@ -2051,9 +2078,8 @@ fn tc_can_unify(from:Type, to:Type) bool {
     return size_of_type(from) == size_of_type(to);
 }
 
-
-fn tc_call(c:*AST_Expr_Call) Type {
-    if c.is_syscall {
+fn tc_builtin_call(c:*AST_Expr_Call) Type {
+    if streq(c.fun_expr.builtin.name, "@syscall", 8) {
         i:int = 0;
         while i < c.args_len {
             tc_expr(&c.args[i]);
@@ -2061,6 +2087,14 @@ fn tc_call(c:*AST_Expr_Call) Type {
         }
         return ast_new_base_type(TYPE_INT);
     }
+    error("That builtin doesn't exist");
+    nop:Type;
+    return nop;
+}
+
+fn tc_call(c:*AST_Expr_Call) Type {
+    if c.fun_expr.kind == AST_EXPR_BUILTIN { return tc_builtin_call(c); }
+
     assert(c.fun_expr.kind == AST_EXPR_VAR);
     fun_name:*char = c.fun_expr.varr.name;
     fun_name_len:int = c.fun_expr.varr.name_len;
@@ -2987,20 +3021,34 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
 
 
 fn cg_syscall(call:AST_Expr_Call) {
-    i:int = 1;
+    i:int = 0;
     while i < call.args_len {
         cg_expr(call.args[i]);
-        pop(syscall_regs(i-1));
         i=i+1;
     }
-    cg_expr(call.args[0]);
-    pop("rax");
+    i = call.args_len - 1;
+    while i >= 1 {
+        pop(syscall_regs(i-1));
+        i=i-1;
+    }
+    pop("rax"); // first arg is sycall code
     syscall_();
     push("rax");
 }
 
+fn cg_builtin_call(call:AST_Expr_Call) {
+    if streq(call.fun_expr.builtin.name, "@syscall", 8) {
+        cg_syscall(call);
+        return;
+    }
+    error("That builtin doesn't exist");
+}
+
 fn cg_call(call:AST_Expr_Call) {
-    if (call.is_syscall) { cg_syscall(call); return; }
+    if (call.fun_expr.kind == AST_EXPR_BUILTIN) {
+        cg_builtin_call(call);
+        return;
+    }
 
     assert(call.fun_expr.kind == AST_EXPR_VAR);
     fun_sym:*Symbol = sym_search(call.fun_expr.varr.sym_idx);
