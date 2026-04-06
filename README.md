@@ -39,15 +39,14 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-- @ built-ins: @size(), @syscall(...), @file, @line
 - #include or similar (modules directly?), not a single monster file
+- better error reporting;
 
 ### NTH
 - SSA IR
 - stack spillout for >6 function arguments;
 - move more stuff to intrinsics? (assembly);
 - string struct? so dont have to pass len + text everyfuckingwhere
-- error lines;
 - for loops?;
 - hex literals;
 
