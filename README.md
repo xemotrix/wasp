@@ -4,8 +4,8 @@ A C-like language that compiles itself.
 
 ## Project overview
 
-- `c/` the c wasp compiler
-- `boot/` the wasp compiler written in wasp
+- `bootc/` the c wasp compiler
+- `src/` the wasp compiler written in wasp
 - `tests/` some wasp programs and the expected assembly output
 
 ## Requirements
@@ -39,15 +39,15 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-- @sizeof
+- @ built-ins: @size(), @syscall(...), @file, @line
 - #include or similar (modules directly?), not a single monster file
 
 ### NTH
+- SSA IR
 - stack spillout for >6 function arguments;
 - move more stuff to intrinsics? (assembly);
 - string struct? so dont have to pass len + text everyfuckingwhere
 - error lines;
-- `__FILE__` and `__LINE__`;
 - for loops?;
 - hex literals;
 
