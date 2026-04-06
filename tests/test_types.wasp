@@ -537,6 +537,20 @@ fn test16() {
     check_num("0x2", 2, w.two);
 }
 
+fn test17() {
+    println("=====test17=====");
+    check_num("0x10", 16, @size(What));
+    check_num("0x18", 24, @size(Lmao));
+    check_num("0x20", 32, @size(Test));
+    check_num("0x08", 8, @size(int));
+    check_num("0x08", 8, @size(*char));
+    check_num("0x08", 8, @size(*********int));
+    check_num("0x08", 8, @size(*Test));
+    check_num("0x01", 1, @size(char));
+    check_num("0x01", 1, @size(bool));
+}
+
+
 fn main() int {
     test0();
     test1();
@@ -555,6 +569,7 @@ fn main() int {
     test14();
     test15();
     test16();
+    test17();
 
     return 0;
 }

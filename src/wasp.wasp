@@ -564,7 +564,6 @@ struct TypeStructDef {
     n_fields:int;
     sizeb:int;
 }
-const SIZEOF_TypeStructDef:int = 56;
 
 struct TypeStructName {
     name:*char;
@@ -578,7 +577,6 @@ struct Type {
     ptr:*Type;
     struct_name:TypeStructName;
 }
-const SIZEOF_Type:int = 48;
 
 ///// EXPRESSIONS //////////////////
 
@@ -591,6 +589,9 @@ const AST_EXPR_BINOP:int      = 5;
 const AST_EXPR_UNOP:int       = 6;
 const AST_EXPR_CALL:int       = 7;
 const AST_EXPR_BUILTIN:int    = 8;
+
+const BUILTIN_SYSCALL:int = 0;
+const BUILTIN_SIZE:int    = 1;
 
 struct AST_Expr_Var {
     name:*char;
@@ -649,10 +650,9 @@ struct AST_Expr {
     binop:AST_Expr_Binop;
     unop:AST_Expr_Unop;
     call:AST_Expr_Call;
-    builtin:AST_Expr_Builtin;
+    builtin:int;
     ty:Type;
 }
-const SIZEOF_AST_Expr:int = 224;
 
 ///// STATEMENTS ///////////////////
 
@@ -670,7 +670,6 @@ struct Block {
     stmts_len:int;
     stmt_cap:int;
 }
-const SIZEOF_Block:int = 24;
 
 struct AST_Stmt_Assign {
     lvalue:AST_Expr;
@@ -711,7 +710,6 @@ struct AST_Stmt {
     returnn:AST_Stmt_Return;
     raw_expr:AST_Expr;
 }
-const SIZEOF_AST_Stmt:int = 864;
 
 ///// DEFINITIONS //////////////////
 
@@ -740,7 +738,6 @@ struct AST_Def {
     global:AST_Stmt_Declare;
     stru:TypeStructDef;
 }
-const SIZEOF_AST_Def:int = 288;
 
 ///// AST //////////////////////////
 
@@ -752,18 +749,18 @@ struct AST {
 ///// AST UTILS ////////////////////
 
 fn ast_new_base_type(bt:int) Type {
-  t:Type;
-  t.kind = TYPE_KIND_BASE;
-  t.base = bt;
-  return t;
+    t:Type;
+    t.kind = TYPE_KIND_BASE;
+    t.base = bt;
+    return t;
 }
 
 fn ast_new_ptr_type(inner_t:Type) Type {
-  t:Type;
-  t.kind = TYPE_KIND_PTR;
-  t.ptr = alloc(SIZEOF_Type);
-  *t.ptr = inner_t;
-  return t;
+    t:Type;
+    t.kind = TYPE_KIND_PTR;
+    t.ptr = alloc(@size(Type));
+    *t.ptr = inner_t;
+    return t;
 }
 
 ////////////////////////////////////
@@ -779,11 +776,30 @@ fn parse_var(t:Token) AST_Expr {
     return e;
 }
 
-fn parse_builtin(t:Token) AST_Expr {
+fn parse_builtin(src:**char, t:Token) AST_Expr {
     e:AST_Expr;
-    e.kind = AST_EXPR_BUILTIN;
-    e.builtin.name = t.text;
-    e.builtin.name_len = t.text_len;
+    if streq(t.text, "@syscall", 8) {
+        // just a builtin var and parse the rest as normal expression
+        e.kind = AST_EXPR_BUILTIN;
+        e.builtin = BUILTIN_SYSCALL;
+        return e;
+    }
+    if streq(t.text, "@size", 5) {
+        // just a builtin var and parse the rest as normal expression
+        e.kind = AST_EXPR_BUILTIN;
+        e.builtin = BUILTIN_SIZE;
+
+        t = lex_token(src);
+        if t.type != TOK_LPAREN { error("expected '(' after @size"); }
+
+        t = lex_token(src);
+        e.ty = parse_type(src, t);
+
+        t = lex_token(src);
+        if t.type != TOK_RPAREN { error("missing ')' after @size"); }
+        return e;
+    }
+    error("unknown builtin");
     return e;
 }
 
@@ -878,14 +894,14 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
     expr.kind = AST_EXPR_CALL;
 
     assert(fun_expr.kind == AST_EXPR_VAR || fun_expr.kind == AST_EXPR_BUILTIN);
-    expr.call.fun_expr = alloc(SIZEOF_AST_Expr);
+    expr.call.fun_expr = alloc(@size(AST_Expr));
     *expr.call.fun_expr = fun_expr;
 
     t = lex_token(src);
     if t.type != TOK_LPAREN { error("Expected '('"); }
 
     args_cap:int = 2;
-    expr.call.args = alloc(args_cap * SIZEOF_AST_Expr);
+    expr.call.args = alloc(args_cap * @size(AST_Expr));
     expr.call.args_len = 0;
     while true {
         t = lex_token(src);
@@ -893,7 +909,7 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
         if t.type == TOK_EOF { error("Expected ')' or expression but found EOF"); }
         if expr.call.args_len >= args_cap {
             args_cap = args_cap * 2;
-            expr.call.args = realloc(expr.call.args, args_cap * SIZEOF_AST_Expr);
+            expr.call.args = realloc(expr.call.args, args_cap * @size(AST_Expr));
         }
 
         expr.call.args[expr.call.args_len] = parse_expr(src, t);
@@ -954,7 +970,7 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
     if t.type == TOK_LIT_STRING { left = parse_lit_string(t); }
     if t.type == TOK_LIT_CHAR { left = parse_lit_char(t); }
     if t.type == TOK_IDEN { left = parse_var(t); }
-    if t.type == TOK_BUILTIN { left = parse_builtin(t); }
+    if t.type == TOK_BUILTIN { left = parse_builtin(src, t); }
     if t.type == TOK_LPAREN {
         t = lex_token(src);
         left = parse_expr(src, t);
@@ -967,7 +983,7 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
         left.kind = AST_EXPR_UNOP;
         left.unop.op = t.type;
         t = lex_token(src);
-        left.unop.expr = alloc(SIZEOF_AST_Expr);
+        left.unop.expr = alloc(@size(AST_Expr));
         *left.unop.expr = parse_expr_with_prec(src, t, pre_prec);
     }
 
@@ -990,10 +1006,10 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
                 t = lex_token(src);
                 new_res:AST_Expr;
                 new_res.kind = AST_EXPR_BINOP;
-                new_res.binop.left = alloc(SIZEOF_AST_Expr);
+                new_res.binop.left = alloc(@size(AST_Expr));
                 *new_res.binop.left = res;
                 new_res.binop.op = op.type;
-                new_res.binop.right = alloc(SIZEOF_AST_Expr);
+                new_res.binop.right = alloc(@size(AST_Expr));
                 *new_res.binop.right = parse_expr(src, t);
                 t = lex_token(src);
                 if t.type != TOK_RSQBR { error("Missing closing ']'"); }
@@ -1010,12 +1026,12 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
             t = lex_token(src);
             new_res:AST_Expr;
             new_res.kind = AST_EXPR_BINOP;
-            new_res.binop.left = alloc(SIZEOF_AST_Expr);
+            new_res.binop.left = alloc(@size(AST_Expr));
             *new_res.binop.left = res;
             new_res.binop.op = t.type;
 
             t = lex_token(src);
-            new_res.binop.right = alloc(SIZEOF_AST_Expr);
+            new_res.binop.right = alloc(@size(AST_Expr));
             *new_res.binop.right = parse_expr_with_prec(src, t, inf_prec);
             res = new_res;
             continue;
@@ -1080,7 +1096,7 @@ fn parse_stmt_define(src:**char, t:Token) AST_Stmt {
     }
     if t.type != TOK_EQUALS { error("Expected '=' after type in definition"); }
     t = lex_token(src);
-    stmt.define.expr = alloc(SIZEOF_AST_Expr);
+    stmt.define.expr = alloc(@size(AST_Expr));
     *stmt.define.expr = parse_expr(src, t);
     t = lex_token(src);
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
@@ -1122,10 +1138,10 @@ fn parse_stmt_while(src:**char, t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_WHILE;
     t = lex_token(src);
-    stmt.whilee.cond = alloc(SIZEOF_AST_Expr);
+    stmt.whilee.cond = alloc(@size(AST_Expr));
     *stmt.whilee.cond = parse_expr(src, t);
     t = lex_token(src);
-    stmt.whilee.block = alloc(SIZEOF_Block);
+    stmt.whilee.block = alloc(@size(Block));
     *stmt.whilee.block = parse_block(src, t);
     return stmt;
 }
@@ -1134,9 +1150,9 @@ fn parse_stmt_if(src:**char, t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_IF;
     t = lex_token(src);
-    stmt.iff.cond = alloc(SIZEOF_AST_Expr);
+    stmt.iff.cond = alloc(@size(AST_Expr));
     *stmt.iff.cond = parse_expr(src, t);
-    stmt.iff.block = alloc(SIZEOF_Block);
+    stmt.iff.block = alloc(@size(Block));
     t = lex_token(src);
     *stmt.iff.block = parse_block(src, t);
     return stmt;
@@ -1150,7 +1166,7 @@ fn parse_stmt_return(src:**char, t:Token) AST_Stmt {
         stmt.returnn.expr = 0;
         return stmt;
     }
-    stmt.returnn.expr = alloc(SIZEOF_AST_Expr);
+    stmt.returnn.expr = alloc(@size(AST_Expr));
     *stmt.returnn.expr = parse_expr(src, t);
     t = lex_token(src);
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
@@ -1195,14 +1211,14 @@ fn parse_block(src:**char, t:Token) Block {
     b:Block;
     b.stmts_len = 0;
     b.stmt_cap = 4;
-    b.stmts = alloc(b.stmt_cap * SIZEOF_AST_Stmt);
+    b.stmts = alloc(b.stmt_cap * @size(AST_Stmt));
     while true {
         t = lex_token(src);
         if t.type == TOK_RCURLY { break; }
         if t.type == TOK_EOF { error("Expected '}' or statement"); }
         if b.stmts_len >= b.stmt_cap {
             b.stmt_cap = b.stmt_cap * 2;
-            b.stmts = realloc(b.stmts, b.stmt_cap * SIZEOF_AST_Stmt);
+            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
         b.stmts[b.stmts_len] = parse_stmt(src, t);
         b.stmts_len = b.stmts_len+1;
@@ -1228,7 +1244,7 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
     fun.num_args = 0;
     fun.arg_names = alloc(arg_names_cap * 8);
     fun.arg_name_lens = alloc(arg_names_cap * 8);
-    fun.arg_types = alloc(arg_names_cap * SIZEOF_Type);
+    fun.arg_types = alloc(arg_names_cap * @size(Type));
     fun.arg_sym_idxs = alloc(arg_names_cap * 8);
 
     while true {
@@ -1240,8 +1256,8 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
             arg_names_cap = arg_names_cap*2;
             fun.arg_names = realloc(fun.arg_names, arg_names_cap * 8);
             fun.arg_name_lens = realloc(fun.arg_name_lens, arg_names_cap * 8);
-            fun.arg_types = realloc(fun.arg_types, arg_names_cap * SIZEOF_Type);
-            fun.arg_sym_idxs = realloc(fun.arg_sym_idxs, arg_names_cap * SIZEOF_Type);
+            fun.arg_types = realloc(fun.arg_types, arg_names_cap * @size(Type));
+            fun.arg_sym_idxs = realloc(fun.arg_sym_idxs, arg_names_cap * @size(Type));
         }
         fun.arg_names[fun.num_args] = t.text;
         fun.arg_name_lens[fun.num_args] = t.text_len;
@@ -1309,7 +1325,7 @@ fn parse_def_struct(src:**char, t:Token) AST_Def {
     cap:int = 2;
     def.stru.field_names = alloc(cap * 8);
     def.stru.field_name_lens = alloc(cap * 8);
-    def.stru.types = alloc(cap * SIZEOF_Type);
+    def.stru.types = alloc(cap * @size(Type));
 
     n_args:int  = 0;
     while (true) {
@@ -1317,7 +1333,7 @@ fn parse_def_struct(src:**char, t:Token) AST_Def {
             cap = cap * 2;
             def.stru.field_names = realloc(def.stru.field_names, cap*8);
             def.stru.field_name_lens = realloc(def.stru.field_name_lens, cap * 8);
-            def.stru.types = realloc(def.stru.types, cap * SIZEOF_Type);
+            def.stru.types = realloc(def.stru.types, cap * @size(Type));
         }
         t = lex_token(src);
         if t.type == TOK_RCURLY { break; }
@@ -1353,7 +1369,7 @@ fn parse_def(src:**char, t:Token) AST_Def {
 fn parse(src:**char) AST{
     ast:AST;
     cap:int = 2;
-    ast.defs = alloc(cap * SIZEOF_AST_Def);
+    ast.defs = alloc(cap * @size(AST_Def));
     ast.defs_len = 0;
     t:Token;
     while true {
@@ -1361,7 +1377,7 @@ fn parse(src:**char) AST{
         if t.type == TOK_EOF { break; }
         if ast.defs_len >= cap { 
             cap = cap * 2;
-            ast.defs = realloc(ast.defs, cap * SIZEOF_AST_Def);
+            ast.defs = realloc(ast.defs, cap * @size(AST_Def));
         }
         ast.defs[ast.defs_len] = parse_def(src, t);
         ast.defs_len = ast.defs_len+1;
@@ -1714,21 +1730,18 @@ struct Symbol {
     def:AST_Stmt_Declare;
     fun:*AST_Def_Fun;
 }
-const SIZEOF_Symbol:int = 160;
 
 struct SymT {
   symbols:*Symbol;
   len:int;
   cap:int;
 }
-const SIZEOF_SymT:int = 24;
 
 struct SSSEntry {
   name:*char;
   name_len:int;
   sym_idx:int;
 }
-const SIZEOF_SSSEntry:int = 24;
 
 struct SSSFrame {
   entries:*SSSEntry;
@@ -1737,21 +1750,18 @@ struct SSSFrame {
   cap:int;
   sret_offset:int;
 }
-const SIZEOF_SSSFrame:int = 40;
 
 struct ScopedSymbolStack {
   frames:*SSSFrame;
   len:int;
   cap:int;
 }
-const SIZEOF_ScopedSymbolStack:int = 40;
 
 struct TypeTable {
   structs:*TypeStructDef;
   len:int;
   cap:int;
 }
-const SIZEOF_TypeTable:int = 24;
 
 fn to_stack_size(size:int) int {
   // rounds up to multiples of 8
@@ -1781,7 +1791,7 @@ fn size_of_type(t:Type) int {
 fn sym_add_type(ts:TypeStructDef) {
     if TT.len >= TT.cap {
         TT.cap = TT.cap * 2;
-        TT.structs = realloc(TT.structs, TT.cap * SIZEOF_TypeStructDef);
+        TT.structs = realloc(TT.structs, TT.cap * @size(TypeStructDef));
     }
     ts.sizeb = -1; // mark it as unknown for now
     TT.structs[TT.len] = ts;
@@ -1863,7 +1873,7 @@ fn sym_compute_type_sizes() {
 fn sym_push_frame() {
     if SSS.len >= SSS.cap {
         SSS.cap = SSS.cap*2;
-        SSS.frames = realloc(SSS.frames, SSS.cap * SIZEOF_SSSFrame);
+        SSS.frames = realloc(SSS.frames, SSS.cap * @size(SSSFrame));
     }
     new_frame:*SSSFrame = &SSS.frames[SSS.len];
     SSS.len = SSS.len+1;
@@ -1876,7 +1886,7 @@ fn sym_push_frame() {
     if SSS.len != 1 {
         new_frame.sizeb = SSS.frames[SSS.len - 2].sizeb;
     }
-    new_frame.entries = alloc(new_frame.cap * SIZEOF_SSSEntry);
+    new_frame.entries = alloc(new_frame.cap * @size(SSSEntry));
 }
 
 fn sym_pop_frame() {
@@ -1885,26 +1895,26 @@ fn sym_pop_frame() {
 }
 
 fn sym_init_tables() {
-    ST = alloc(SIZEOF_SymT);
+    ST = alloc(@size(SymT));
     ST.cap = 32;
     ST.len = 0;
-    ST.symbols = alloc(ST.cap * SIZEOF_Symbol);
+    ST.symbols = alloc(ST.cap * @size(Symbol));
 
-    TT = alloc(SIZEOF_TypeTable);
+    TT = alloc(@size(TypeTable));
     TT.cap = 32;
     TT.len = 0;
-    TT.structs = alloc(TT.cap * SIZEOF_TypeStructDef);
+    TT.structs = alloc(TT.cap * @size(TypeStructDef));
 
-    SSS = alloc(SIZEOF_ScopedSymbolStack);
+    SSS = alloc(@size(ScopedSymbolStack));
     SSS.cap = 32;
     SSS.len = 0;
-    SSS.frames = alloc(SSS.cap * SIZEOF_SSSFrame);
+    SSS.frames = alloc(SSS.cap * @size(SSSFrame));
 }
 
 fn new_sym() *Symbol {
     if ST.len >= ST.cap {
         ST.cap = ST.cap*2;
-        ST.symbols = realloc(ST.symbols, ST.cap * SIZEOF_Symbol);
+        ST.symbols = realloc(ST.symbols, ST.cap * @size(Symbol));
     }
     sym:*Symbol = &ST.symbols[ST.len];
     ST.len = ST.len + 1;
@@ -1934,7 +1944,7 @@ fn new_entry() *SSSEntry {
     f:*SSSFrame = current_frame();
     if f.len >= f.cap {
         f.cap = f.cap*2;
-        f.entries = realloc(f.entries, f.cap * SIZEOF_SSSEntry);
+        f.entries = realloc(f.entries, f.cap * @size(SSSEntry));
     }
     e:*SSSEntry = &f.entries[f.len];
     f.len = f.len + 1;
@@ -2079,7 +2089,7 @@ fn tc_can_unify(from:Type, to:Type) bool {
 }
 
 fn tc_builtin_call(c:*AST_Expr_Call) Type {
-    if streq(c.fun_expr.builtin.name, "@syscall", 8) {
+    if c.fun_expr.builtin == BUILTIN_SYSCALL {
         i:int = 0;
         while i < c.args_len {
             tc_expr(&c.args[i]);
@@ -2087,7 +2097,7 @@ fn tc_builtin_call(c:*AST_Expr_Call) Type {
         }
         return ast_new_base_type(TYPE_INT);
     }
-    error("That builtin doesn't exist");
+    error("Unknown builtin");
     nop:Type;
     return nop;
 }
@@ -2287,6 +2297,18 @@ fn tc_var(varr:*AST_Expr_Var) Type {
 }
 
 fn tc_expr(expr:*AST_Expr) {
+    if expr.kind == AST_EXPR_BUILTIN {
+        if expr.builtin == BUILTIN_SIZE {
+            // not the prettiest
+            sym_fill_index_if_struct(&expr.ty);
+            size:int = size_of_type(expr.ty);
+            expr.kind = AST_EXPR_LIT_INT;
+            expr.lit_int.value = size;
+            expr.ty = ast_new_base_type(TYPE_INT);
+            return;
+        }
+        error("unkown syscall");
+    }
     if expr.kind == AST_EXPR_LIT_INT {
         expr.ty = ast_new_base_type(TYPE_INT);
         return;
@@ -2471,7 +2493,7 @@ fn tc_fun(fun:*AST_Def_Fun) {
         ret_stmt.returnn.expr = 0;
         if b.stmt_cap <= b.stmts_len {
             b.stmt_cap = b.stmt_cap + 1;
-            b.stmts = realloc(b.stmts, b.stmt_cap * SIZEOF_AST_Stmt);
+            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
         b.stmts[b.stmts_len] = ret_stmt;
         b.stmts_len = b.stmts_len + 1;
@@ -3037,7 +3059,7 @@ fn cg_syscall(call:AST_Expr_Call) {
 }
 
 fn cg_builtin_call(call:AST_Expr_Call) {
-    if streq(call.fun_expr.builtin.name, "@syscall", 8) {
+    if call.fun_expr.builtin == BUILTIN_SYSCALL {
         cg_syscall(call);
         return;
     }

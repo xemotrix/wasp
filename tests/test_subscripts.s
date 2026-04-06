@@ -55,13 +55,13 @@ write:
 	sub rsp, 16
 	mov [rbp-8], rdi
 	mov [rbp-16], rsi
+	push QWORD [GLBL_SYS_WRITE]
 	push QWORD [GLBL_STDOUT]
-	pop rdi
 	push QWORD [rbp-8]
-	pop rsi
 	push QWORD [rbp-16]
 	pop rdx
-	push QWORD [GLBL_SYS_WRITE]
+	pop rsi
+	pop rdi
 	pop rax
 	syscall
 	push rax
@@ -113,9 +113,9 @@ exit:
 	mov rbp, rsp
 	sub rsp, 8
 	mov [rbp-8], rdi
+	push QWORD [GLBL_SYS_EXIT]
 	push QWORD [rbp-8]
 	pop rdi
-	push QWORD [GLBL_SYS_EXIT]
 	pop rax
 	syscall
 	push rax
@@ -205,11 +205,11 @@ munmap:
 	sub rsp, 16
 	mov [rbp-8], rdi
 	mov [rbp-16], rsi
+	push QWORD [GLBL_SYS_MUNMAP]
 	push QWORD [rbp-8]
-	pop rdi
 	push QWORD [rbp-16]
 	pop rsi
-	push QWORD [GLBL_SYS_MUNMAP]
+	pop rdi
 	pop rax
 	syscall
 	push rax
@@ -238,29 +238,29 @@ mmap:
 	push 0
 	pop rax
 	mov QWORD [rbp-32], rax
+	push QWORD [GLBL_SYS_MMAP]
 	push QWORD [rbp-32]
-	pop rdi
 	push QWORD [rbp-8]
-	pop rsi
 	push QWORD [GLBL_PROT_READ]
 	push QWORD [GLBL_PROT_WRITE]
 	pop rbx
 	pop rax
 	or rax, rbx
 	push rax
-	pop rdx
 	push QWORD [GLBL_MAP_PRIVATE]
 	push QWORD [GLBL_MAP_ANONYMOUS]
 	pop rbx
 	pop rax
 	or rax, rbx
 	push rax
-	pop r10
 	push QWORD [rbp-16]
-	pop r8
 	push QWORD [rbp-24]
 	pop r9
-	push QWORD [GLBL_SYS_MMAP]
+	pop r8
+	pop r10
+	pop rdx
+	pop rsi
+	pop rdi
 	pop rax
 	syscall
 	push rax
@@ -447,13 +447,13 @@ open:
 	mov rbp, rsp
 	sub rsp, 8
 	mov [rbp-8], rdi
+	push QWORD [GLBL_SYS_OPEN]
 	push QWORD [rbp-8]
-	pop rdi
 	push 0
-	pop rsi
 	push 0
 	pop rdx
-	push QWORD [GLBL_SYS_OPEN]
+	pop rsi
+	pop rdi
 	pop rax
 	syscall
 	push rax
@@ -469,13 +469,13 @@ read:
 	mov [rbp-8], rdi
 	mov [rbp-16], rsi
 	mov [rbp-24], rdx
+	push QWORD [GLBL_SYS_READ]
 	push QWORD [rbp-8]
-	pop rdi
 	push QWORD [rbp-16]
-	pop rsi
 	push QWORD [rbp-24]
 	pop rdx
-	push QWORD [GLBL_SYS_READ]
+	pop rsi
+	pop rdi
 	pop rax
 	syscall
 	push rax
@@ -963,6 +963,12 @@ WHC_27:
 	cmp al, bl
 	sete cl
 	push rcx
+	pop rax
+	test rax, rax
+	jz BOOL_29
+	push 1
+	jmp BOOL_30
+BOOL_29:
 	push QWORD [rbp-16]
 	push QWORD [rbp-32]
 	pop rax
@@ -979,19 +985,16 @@ WHC_27:
 	cmp al, bl
 	sete cl
 	push rcx
-	pop rbx
-	pop rax
-	or al, bl
-	push rax
+BOOL_30:
 	pop ax
 	cmp al, 0
-	je IF_29
+	je IF_31
 	push 0
 	pop rax
 	mov rsp, rbp
 	pop rbp
 	ret
-IF_29:
+IF_31:
 	push QWORD [rbp-8]
 	push QWORD [rbp-32]
 	pop rax
@@ -1018,13 +1021,13 @@ IF_29:
 	push rcx
 	pop ax
 	cmp al, 0
-	je IF_30
+	je IF_32
 	push 0
 	pop rax
 	mov rsp, rbp
 	pop rbp
 	ret
-IF_30:
+IF_32:
 	lea rax, [rbp-32]
 	push rax
 	push QWORD [rbp-32]
@@ -1061,14 +1064,14 @@ check_num:
 	push rcx
 	pop ax
 	cmp al, 0
-	je IF_31
-	push STR_32
+	je IF_33
+	push STR_34
 	pop rdi
 	call print
 	push QWORD [rbp-8]
 	pop rdi
 	call print
-	push STR_33
+	push STR_35
 	pop rdi
 	call print
 	push QWORD [rbp-24]
@@ -1077,7 +1080,7 @@ check_num:
 	push rax
 	pop rdi
 	call println
-IF_31:
+IF_33:
 	push QWORD [rbp-24]
 	push QWORD [rbp-16]
 	pop rbx
@@ -1088,8 +1091,8 @@ IF_31:
 	push rcx
 	pop ax
 	cmp al, 0
-	je IF_34
-	push STR_35
+	je IF_36
+	push STR_37
 	pop rdi
 	call print
 	push QWORD [rbp-16]
@@ -1098,7 +1101,7 @@ IF_31:
 	push rax
 	pop rdi
 	call print
-	push STR_36
+	push STR_38
 	pop rdi
 	call print
 	push QWORD [rbp-24]
@@ -1107,7 +1110,7 @@ IF_31:
 	push rax
 	pop rdi
 	call println
-IF_34:
+IF_36:
 	push 0
 	pop rax
 	mov rsp, rbp
@@ -1118,7 +1121,7 @@ test0:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 32
-	push STR_37
+	push STR_39
 	pop rdi
 	call println
 	; define num
@@ -1141,7 +1144,7 @@ test0:
 	push 0
 	pop rax
 	mov QWORD [rbp-24], rax
-WHC_38:
+WHC_40:
 	push QWORD [rbp-24]
 	push QWORD [rbp-8]
 	pop rbx
@@ -1152,7 +1155,7 @@ WHC_38:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_39
+	je WHE_41
 	push QWORD [rbp-16]
 	push QWORD [rbp-24]
 	pop rax
@@ -1181,8 +1184,8 @@ WHC_38:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_38
-WHE_39:
+	jmp WHC_40
+WHE_41:
 	; define accum
 	push 0
 	pop rax
@@ -1193,7 +1196,7 @@ WHE_39:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-WHC_40:
+WHC_42:
 	push QWORD [rbp-24]
 	push QWORD [rbp-8]
 	pop rbx
@@ -1204,7 +1207,7 @@ WHC_40:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_41
+	je WHE_43
 	lea rax, [rbp-32]
 	push rax
 	push QWORD [rbp-32]
@@ -1235,9 +1238,9 @@ WHC_40:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_40
-WHE_41:
-	push STR_42
+	jmp WHC_42
+WHE_43:
+	push STR_44
 	mov rax, 4398046511103
 	push rax
 	push QWORD [rbp-32]
@@ -1257,7 +1260,7 @@ test1:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 32
-	push STR_43
+	push STR_45
 	pop rdi
 	call println
 	; define num
@@ -1310,7 +1313,7 @@ test1:
 	mov rdi, rbx
 	mov rcx, 16
 	rep movsb
-	push STR_44
+	push STR_46
 	push 15
 	push QWORD [rbp-16]
 	push 3
@@ -1330,7 +1333,7 @@ test1:
 	call check_num
 	push rax
 	pop r13
-	push STR_45
+	push STR_47
 	push 14
 	push QWORD [rbp-16]
 	push 3
@@ -1358,7 +1361,7 @@ test2:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 16
-	push STR_46
+	push STR_48
 	pop rdi
 	call println
 	; define num
@@ -1391,7 +1394,7 @@ test2:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	push STR_47
+	push STR_49
 	push 15
 	push QWORD [rbp-16]
 	push 4
@@ -1419,7 +1422,7 @@ test3:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 40
-	push STR_48
+	push STR_50
 	pop rdi
 	call println
 	; define num
@@ -1434,7 +1437,7 @@ test3:
 	pop rax
 	mov QWORD [rbp-16], rax
 	; define source
-	push STR_49
+	push STR_51
 	pop rax
 	mov QWORD [rbp-24], rax
 	; define len
@@ -1448,7 +1451,7 @@ test3:
 	push 0
 	pop rax
 	mov QWORD [rbp-40], rax
-WHC_50:
+WHC_52:
 	push QWORD [rbp-40]
 	push QWORD [rbp-32]
 	pop rbx
@@ -1459,7 +1462,7 @@ WHC_50:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_51
+	je WHE_53
 	push QWORD [rbp-16]
 	push QWORD [rbp-40]
 	pop rax
@@ -1490,8 +1493,8 @@ WHC_50:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_50
-WHE_51:
+	jmp WHC_52
+WHE_53:
 	push QWORD [rbp-16]
 	push 24
 	pop rax
@@ -1514,7 +1517,7 @@ test4:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 16
-	push STR_52
+	push STR_54
 	pop rdi
 	call println
 	; define aptr
@@ -1576,7 +1579,7 @@ test4:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	push STR_53
+	push STR_55
 	push 42
 	push QWORD [rbp-8]
 	pop rax
@@ -1617,7 +1620,7 @@ test4:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	push STR_54
+	push STR_56
 	push 42
 	push QWORD [rbp-8]
 	pop rax
@@ -1650,7 +1653,7 @@ test5:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 32
-	push STR_55
+	push STR_57
 	pop rdi
 	call println
 	; define arr
@@ -1669,7 +1672,7 @@ test5:
 	push 0
 	pop rax
 	mov QWORD [rbp-16], rax
-WHC_56:
+WHC_58:
 	push QWORD [rbp-16]
 	push 10
 	pop rbx
@@ -1680,7 +1683,7 @@ WHC_56:
 	push rcx
 	pop rax
 	cmp rax, 0
-	je WHE_57
+	je WHE_59
 	push QWORD [rbp-8]
 	push QWORD [rbp-16]
 	pop rax
@@ -1703,8 +1706,8 @@ WHC_56:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	jmp WHC_56
-WHE_57:
+	jmp WHC_58
+WHE_59:
 	; define ref
 	push QWORD [rbp-8]
 	push 7
@@ -1721,7 +1724,7 @@ WHE_57:
 	push QWORD [rax]
 	pop rax
 	mov QWORD [rbp-32], rax
-	push STR_58
+	push STR_60
 	push 7
 	push QWORD [rbp-32]
 	pop rdx
@@ -1738,7 +1741,7 @@ test6:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 48
-	push STR_59
+	push STR_61
 	pop rdi
 	call println
 	; define t
@@ -1806,7 +1809,7 @@ test6:
 	mov rdi, rbx
 	mov rcx, 32
 	rep movsb
-	push STR_60
+	push STR_62
 	push 1
 	lea rax, [rbp-32]
 	push rax
@@ -1821,7 +1824,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_61
+	push STR_63
 	push 2
 	lea rax, [rbp-32]
 	push rax
@@ -1839,7 +1842,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_62
+	push STR_64
 	push 3
 	lea rax, [rbp-32]
 	push rax
@@ -1857,7 +1860,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_63
+	push STR_65
 	push 4
 	lea rax, [rbp-32]
 	push rax
@@ -1882,7 +1885,7 @@ test6:
 	push rbx
 	pop rax
 	mov QWORD [rbp-48], rax
-	push STR_64
+	push STR_66
 	push 1
 	push QWORD [rbp-48]
 	pop rax
@@ -1896,7 +1899,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_65
+	push STR_67
 	push 2
 	push QWORD [rbp-48]
 	pop rax
@@ -1913,7 +1916,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_66
+	push STR_68
 	push 3
 	push QWORD [rbp-48]
 	pop rax
@@ -1930,7 +1933,7 @@ test6:
 	call check_num
 	push rax
 	pop r13
-	push STR_67
+	push STR_69
 	push 4
 	push QWORD [rbp-48]
 	pop rax
@@ -1952,7 +1955,7 @@ test7:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 32
-	push STR_68
+	push STR_70
 	pop rdi
 	call println
 	; define h
@@ -2054,7 +2057,7 @@ test7:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	push STR_69
+	push STR_71
 	push 1
 	lea rax, [rbp-24]
 	push rax
@@ -2080,7 +2083,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_70
+	push STR_72
 	push 2
 	lea rax, [rbp-24]
 	push rax
@@ -2109,7 +2112,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_71
+	push STR_73
 	push 3
 	lea rax, [rbp-24]
 	push rax
@@ -2138,7 +2141,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_72
+	push STR_74
 	push 4
 	lea rax, [rbp-24]
 	push rax
@@ -2180,7 +2183,7 @@ test7:
 	push rbx
 	pop rax
 	mov QWORD [rbp-32], rax
-	push STR_73
+	push STR_75
 	push 1
 	push QWORD [rbp-32]
 	pop rax
@@ -2194,7 +2197,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_74
+	push STR_76
 	push 2
 	push QWORD [rbp-32]
 	pop rax
@@ -2211,7 +2214,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_75
+	push STR_77
 	push 3
 	push QWORD [rbp-32]
 	pop rax
@@ -2228,7 +2231,7 @@ test7:
 	call check_num
 	push rax
 	pop r13
-	push STR_76
+	push STR_78
 	push 4
 	push QWORD [rbp-32]
 	pop rax
@@ -2327,7 +2330,7 @@ test8:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 96
-	push STR_77
+	push STR_79
 	pop rdi
 	call println
 	; define h
@@ -2391,7 +2394,7 @@ test8:
 	mov rdi, rbx
 	mov rcx, 32
 	rep movsb
-	push STR_78
+	push STR_80
 	push 1
 	lea rax, [rbp-24]
 	push rax
@@ -2417,7 +2420,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_79
+	push STR_81
 	push 2
 	lea rax, [rbp-24]
 	push rax
@@ -2446,7 +2449,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_80
+	push STR_82
 	push 3
 	lea rax, [rbp-24]
 	push rax
@@ -2475,7 +2478,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_81
+	push STR_83
 	push 4
 	lea rax, [rbp-24]
 	push rax
@@ -2501,7 +2504,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_82
+	push STR_84
 	push 5
 	lea rax, [rbp-24]
 	push rax
@@ -2527,7 +2530,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_83
+	push STR_85
 	push 6
 	lea rax, [rbp-24]
 	push rax
@@ -2556,7 +2559,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_84
+	push STR_86
 	push 7
 	lea rax, [rbp-24]
 	push rax
@@ -2585,7 +2588,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_85
+	push STR_87
 	push 8
 	lea rax, [rbp-24]
 	push rax
@@ -2627,7 +2630,7 @@ test8:
 	push rbx
 	pop rax
 	mov QWORD [rbp-96], rax
-	push STR_86
+	push STR_88
 	push 1
 	push QWORD [rbp-96]
 	pop rax
@@ -2641,7 +2644,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_87
+	push STR_89
 	push 2
 	push QWORD [rbp-96]
 	pop rax
@@ -2658,7 +2661,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_88
+	push STR_90
 	push 3
 	push QWORD [rbp-96]
 	pop rax
@@ -2675,7 +2678,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_89
+	push STR_91
 	push 4
 	push QWORD [rbp-96]
 	pop rax
@@ -2707,7 +2710,7 @@ test8:
 	pop rax
 	pop rbx
 	mov [rbx], rax
-	push STR_90
+	push STR_92
 	push 5
 	push QWORD [rbp-96]
 	pop rax
@@ -2721,7 +2724,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_91
+	push STR_93
 	push 6
 	push QWORD [rbp-96]
 	pop rax
@@ -2738,7 +2741,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_92
+	push STR_94
 	push 7
 	push QWORD [rbp-96]
 	pop rax
@@ -2755,7 +2758,7 @@ test8:
 	call check_num
 	push rax
 	pop r13
-	push STR_93
+	push STR_95
 	push 8
 	push QWORD [rbp-96]
 	pop rax
@@ -2809,59 +2812,59 @@ section .rodata
 	STR_17: db "there is more to read...", 0
 	STR_19: db "there is NO more to read!", 0
 	STR_20: db "0123456789abcdef", 0
-	STR_32: db "OK: expected: (", 0
-	STR_33: db "), got: ", 0
-	STR_35: db "FAIL: expected ", 0
-	STR_36: db " but got ", 0
-	STR_37: db "=====test0=====", 0
-	STR_42: db "0x000003ffffffffff", 0
-	STR_43: db "=====test1=====", 0
-	STR_44: db "0xf", 0
-	STR_45: db "0xe", 0
-	STR_46: db "=====test2=====", 0
-	STR_47: db "0xf", 0
-	STR_48: db "=====test3=====", 0
-	STR_49: db "if you see a # it's ok >?< here!", 0
-	STR_52: db "=====test4=====", 0
-	STR_53: db "2a", 0
-	STR_54: db "2a", 0
-	STR_55: db "=====test5=====", 0
-	STR_58: db "0x7", 0
-	STR_59: db "=====test6=====", 0
-	STR_60: db "0x1", 0
-	STR_61: db "0x2", 0
-	STR_62: db "0x3", 0
-	STR_63: db "0x4", 0
-	STR_64: db "0x1", 0
-	STR_65: db "0x2", 0
-	STR_66: db "0x3", 0
-	STR_67: db "0x4", 0
-	STR_68: db "=====test7=====", 0
-	STR_69: db "0x1", 0
-	STR_70: db "0x2", 0
-	STR_71: db "0x3", 0
-	STR_72: db "0x4", 0
-	STR_73: db "0x1", 0
-	STR_74: db "0x2", 0
-	STR_75: db "0x3", 0
-	STR_76: db "0x4", 0
-	STR_77: db "=====test8=====", 0
-	STR_78: db "0x1", 0
-	STR_79: db "0x2", 0
-	STR_80: db "0x3", 0
-	STR_81: db "0x4", 0
-	STR_82: db "0x5", 0
-	STR_83: db "0x6", 0
-	STR_84: db "0x7", 0
-	STR_85: db "0x8", 0
-	STR_86: db "0x1", 0
-	STR_87: db "0x2", 0
-	STR_88: db "0x3", 0
-	STR_89: db "0x4", 0
-	STR_90: db "0x5", 0
-	STR_91: db "0x6", 0
-	STR_92: db "0x7", 0
-	STR_93: db "0x8", 0
+	STR_34: db "OK: expected: (", 0
+	STR_35: db "), got: ", 0
+	STR_37: db "FAIL: expected ", 0
+	STR_38: db " but got ", 0
+	STR_39: db "=====test0=====", 0
+	STR_44: db "0x000003ffffffffff", 0
+	STR_45: db "=====test1=====", 0
+	STR_46: db "0xf", 0
+	STR_47: db "0xe", 0
+	STR_48: db "=====test2=====", 0
+	STR_49: db "0xf", 0
+	STR_50: db "=====test3=====", 0
+	STR_51: db "if you see a # it's ok >?< here!", 0
+	STR_54: db "=====test4=====", 0
+	STR_55: db "2a", 0
+	STR_56: db "2a", 0
+	STR_57: db "=====test5=====", 0
+	STR_60: db "0x7", 0
+	STR_61: db "=====test6=====", 0
+	STR_62: db "0x1", 0
+	STR_63: db "0x2", 0
+	STR_64: db "0x3", 0
+	STR_65: db "0x4", 0
+	STR_66: db "0x1", 0
+	STR_67: db "0x2", 0
+	STR_68: db "0x3", 0
+	STR_69: db "0x4", 0
+	STR_70: db "=====test7=====", 0
+	STR_71: db "0x1", 0
+	STR_72: db "0x2", 0
+	STR_73: db "0x3", 0
+	STR_74: db "0x4", 0
+	STR_75: db "0x1", 0
+	STR_76: db "0x2", 0
+	STR_77: db "0x3", 0
+	STR_78: db "0x4", 0
+	STR_79: db "=====test8=====", 0
+	STR_80: db "0x1", 0
+	STR_81: db "0x2", 0
+	STR_82: db "0x3", 0
+	STR_83: db "0x4", 0
+	STR_84: db "0x5", 0
+	STR_85: db "0x6", 0
+	STR_86: db "0x7", 0
+	STR_87: db "0x8", 0
+	STR_88: db "0x1", 0
+	STR_89: db "0x2", 0
+	STR_90: db "0x3", 0
+	STR_91: db "0x4", 0
+	STR_92: db "0x5", 0
+	STR_93: db "0x6", 0
+	STR_94: db "0x7", 0
+	STR_95: db "0x8", 0
 	GLBL_SYS_READ: dq 0
 	GLBL_SYS_WRITE: dq 1
 	GLBL_SYS_OPEN: dq 2
