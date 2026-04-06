@@ -318,7 +318,7 @@ fn is_digit(c:char) bool { return c >= '0' && c <= '9'; }
 
 fn peek_token(src:*char) Token {
     ref:*char = 0;
-    while (ref != src) {
+    while ref != src {
         ref = src;
         while is_whitespace(*src) { src = src+1; }
         src = src + len_skip_comments(src);
@@ -414,9 +414,7 @@ fn peek_token(src:*char) Token {
 
 fn lex_iden(src:*char) Token {
     c:int = 0;
-    xd:bool  = is_alpha(src[c]) || is_digit(src[c]) || (src[c] == '_');
-
-    while (is_alpha(src[c]) || is_digit(src[c]) || (src[c] == '_')) {
+    while is_alpha(src[c]) || is_digit(src[c]) || src[c] == '_' {
         c = c+1;
     }
 
@@ -466,9 +464,9 @@ fn lex_string(src:*char) Token {
     while true {
         t.text_len = t.text_len+1;
         if src[t.text_len] == '\0' { error("unfinished string literal"); }
-        if (src[t.text_len] == '\\' 
+        if src[t.text_len] == '\\' 
         && src[t.text_len + 1] != '\0' 
-        && src[t.text_len + 1] == '"') {
+        && src[t.text_len + 1] == '"' {
             t.text_len=t.text_len+1;
             continue;
         }
@@ -483,11 +481,11 @@ fn lex_char(src: *char) Token {
     t.type = TOK_LIT_CHAR;
     t.text_len = 2;
     t.text = src;
-    if (src[1] == '\\') {
+    if src[1] == '\\' {
         valid_escape:bool = false;
-        if (src[2] == 'n' || src[2] == 'r' ||
-            src[2] == 't' || src[2] == '\\' ||
-            src[2] == '0' || src[2] == '\'') {
+        if src[2] == 'n' || src[2] == 'r'
+        || src[2] == 't' || src[2] == '\\'
+        || src[2] == '0' || src[2] == '\'' {
             t.text_len = t.text_len+1;
             valid_escape = true;
         }
@@ -865,8 +863,8 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
     assert(fun_expr.kind == AST_EXPR_VAR);
     expr.call.fun_expr = alloc(SIZEOF_AST_Expr);
     *expr.call.fun_expr = fun_expr;
-    expr.call.is_syscall = fun_expr.varr.name_len == 7 &&
-                           streq(fun_expr.varr.name, "syscall", 7);
+    expr.call.is_syscall = fun_expr.varr.name_len == 7
+                           && streq(fun_expr.varr.name, "syscall", 7);
 
     t = lex_token(src);
     if t.type != TOK_LPAREN { error("Expected '('"); }
@@ -1009,7 +1007,6 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
         break;
     }
     return res;
-    return left;
 }
 
 fn parse_expr(src:**char, t:Token) AST_Expr {
@@ -1049,12 +1046,12 @@ fn parse_stmt_define(src:**char, t:Token) AST_Stmt {
     t = lex_token(src);
 
     found_type:bool=false;
-    if t.type == TOK_TY_BOOL ||
-        t.type == TOK_TY_INT ||
-        t.type == TOK_TY_VOID ||
-        t.type == TOK_TY_CHAR ||
-        t.type == TOK_ASTERISK ||
-        t.type == TOK_IDEN {
+    if t.type == TOK_TY_BOOL
+    || t.type == TOK_TY_INT
+    || t.type == TOK_TY_VOID
+    || t.type == TOK_TY_CHAR
+    || t.type == TOK_ASTERISK
+    || t.type == TOK_IDEN {
         stmt.define.t = parse_type(src, t);
         found_type = true;
     }
@@ -1261,8 +1258,10 @@ fn parse_def_varconst(src:**char, t:Token) AST_Def {
 
     stmt:AST_Stmt = parse_stmt_define(src, t);
     kind:int = stmt.define.expr.kind;
-    if kind != AST_EXPR_LIT_INT && kind != AST_EXPR_LIT_STRING &&
-        kind != AST_EXPR_LIT_CHAR && kind != AST_EXPR_LIT_BOOL {
+    if kind != AST_EXPR_LIT_INT
+    && kind != AST_EXPR_LIT_STRING
+    && kind != AST_EXPR_LIT_CHAR
+    && kind != AST_EXPR_LIT_BOOL {
         error("consts can't be anything other than literals");
     }
     d.global = stmt.define;
@@ -1361,17 +1360,17 @@ fn ind() {
 fn render_type(t:Type) {
     ind();
     print("(Type ");
-    while (t.kind == TYPE_KIND_PTR) {
+    while t.kind == TYPE_KIND_PTR {
         print("*");
         t = *t.ptr;
     }
-    if (t.kind == TYPE_KIND_STRUCT) {
+    if t.kind == TYPE_KIND_STRUCT {
         write(t.struct_name.name,
               t.struct_name.name_len);
         print(" tidx:(");
         print(fmt_dec(t.struct_name.sym_idx));
     }
-    if (t.kind == TYPE_KIND_BASE) {
+    if t.kind == TYPE_KIND_BASE {
         if t.base == TYPE_VOID { print("void"); }
         if t.base == TYPE_INT  { print("int"); }
         if t.base == TYPE_CHAR { print("char"); }
@@ -1410,8 +1409,8 @@ fn render_lit_int(l:AST_Expr_Lit_Int) {
 
 fn render_lit_bool(l:AST_Expr_Lit_Bool) {
     print("(LIT_BOOL ");
-    if (l.value == 0) { print("false"); }
-    if (l.value != 0) { print("true"); }
+    if l.value == 0 { print("false"); }
+    if l.value != 0 { print("true"); }
     print(")");
 }
 
@@ -1448,28 +1447,28 @@ fn render_unop(u:AST_Expr_Unop) {
 }
 
 fn render_op(op:int) {
-    if op == TOK_LSQBR { print("[]"); }
-    if op == TOK_LPAREN { print("(call)"); }
-    if op == TOK_BANG { print("!"); }
-    if op == TOK_TILDE { print("~"); }
+    if op == TOK_LSQBR        { print("[]"); }
+    if op == TOK_LPAREN       { print("(call)"); }
+    if op == TOK_BANG         { print("!"); }
+    if op == TOK_TILDE        { print("~"); }
     if op == TOK_EQUALSEQUALS { print("=="); }
-    if op == TOK_BANGEQUALS { print("!="); }
-    if op == TOK_GT { print(">"); }
-    if op == TOK_GTE { print(">="); }
-    if op == TOK_LT { print("<"); }
-    if op == TOK_LTE { print("<="); }
-    if op == TOK_AND { print("&&"); }
-    if op == TOK_OR { print("||"); }
-    if op == TOK_BIT_OR { print("|"); }
-    if op == TOK_AMPERSAND { print("&"); }
-    if op == TOK_PLUS { print("+"); }
-    if op == TOK_MINUS { print("-"); }
-    if op == TOK_SHIFT_LEFT { print(">>"); }
-    if op == TOK_SHIFT_RIGHT { print("<<"); }
-    if op == TOK_ASTERISK { print("*"); }
-    if op == TOK_PERCENT { print("%"); }
-    if op == TOK_SLASH { print("/"); }
-    if op == TOK_PERIOD { print("."); }
+    if op == TOK_BANGEQUALS   { print("!="); }
+    if op == TOK_GT           { print(">"); }
+    if op == TOK_GTE          { print(">="); }
+    if op == TOK_LT           { print("<"); }
+    if op == TOK_LTE          { print("<="); }
+    if op == TOK_AND          { print("&&"); }
+    if op == TOK_OR           { print("||"); }
+    if op == TOK_BIT_OR       { print("|"); }
+    if op == TOK_AMPERSAND    { print("&"); }
+    if op == TOK_PLUS         { print("+"); }
+    if op == TOK_MINUS        { print("-"); }
+    if op == TOK_SHIFT_LEFT   { print(">>"); }
+    if op == TOK_SHIFT_RIGHT  { print("<<"); }
+    if op == TOK_ASTERISK     { print("*"); }
+    if op == TOK_PERCENT      { print("%"); }
+    if op == TOK_SLASH        { print("/"); }
+    if op == TOK_PERIOD       { print("."); }
 }
 fn render_binop(b:AST_Expr_Binop) {
     ind();
@@ -1487,23 +1486,21 @@ fn render_expr(e:AST_Expr) {
     print("(EXPR ");
     IND=IND+1;
     should_render_type:bool = true;
-    if (e.kind == AST_EXPR_VAR) {
-        if (e.varr.sym_idx == -1) {
-            should_render_type=false;
-            print("(NOTYPE)");
-        }
+    if e.kind == AST_EXPR_VAR
+    && e.varr.sym_idx == -1 {
+        should_render_type=false;
+        print("(NOTYPE)");
     }
-    if should_render_type {
-        render_type(e.ty);
-    }
-    if e.kind == AST_EXPR_LIT_INT { render_lit_int(e.lit_int); }
-    if e.kind == AST_EXPR_LIT_BOOL { render_lit_bool(e.lit_bool); }
+    if should_render_type { render_type(e.ty); }
+
+    if e.kind == AST_EXPR_LIT_INT    { render_lit_int(e.lit_int); }
+    if e.kind == AST_EXPR_LIT_BOOL   { render_lit_bool(e.lit_bool); }
     if e.kind == AST_EXPR_LIT_STRING { render_lit_string(e.lit_string); }
-    if e.kind == AST_EXPR_LIT_CHAR { render_lit_char(e.lit_char); }
-    if e.kind == AST_EXPR_VAR { render_expr_var(e.varr); }
-    if e.kind == AST_EXPR_BINOP { render_binop(e.binop); }
-    if e.kind == AST_EXPR_UNOP { render_unop(e.unop); }
-    if e.kind == AST_EXPR_CALL { render_expr_call(e.call); }
+    if e.kind == AST_EXPR_LIT_CHAR   { render_lit_char(e.lit_char); }
+    if e.kind == AST_EXPR_VAR        { render_expr_var(e.varr); }
+    if e.kind == AST_EXPR_BINOP      { render_binop(e.binop); }
+    if e.kind == AST_EXPR_UNOP       { render_unop(e.unop); }
+    if e.kind == AST_EXPR_CALL       { render_expr_call(e.call); }
     IND=IND-1;
     print(")");
 }
@@ -1592,14 +1589,14 @@ fn render_return(r:AST_Stmt_Return) {
 }
 
 fn render_stmt(s:AST_Stmt) {
-    if s.kind == AST_STMT_DEFINE {render_define(s.define); return; }
-    if s.kind == AST_STMT_ASSIGN {render_assign(s.assign); return; }
-    if s.kind == AST_STMT_IF {render_if(s.iff); return; }
-    if s.kind == AST_STMT_WHILE {render_while(s.whilee); return; }
-    if s.kind == AST_STMT_RETURN {render_return(s.returnn); return; }
-    if s.kind == AST_STMT_RAW_EXPR {render_expr(s.raw_expr); return; }
-    if s.kind == AST_STMT_BREAK {print("(BREAK)"); return; }
-    if s.kind == AST_STMT_CONTINUE {print("(CONTINUE)"); return; }
+    if s.kind == AST_STMT_DEFINE   { render_define(s.define); return; }
+    if s.kind == AST_STMT_ASSIGN   { render_assign(s.assign); return; }
+    if s.kind == AST_STMT_IF       { render_if(s.iff); return; }
+    if s.kind == AST_STMT_WHILE    { render_while(s.whilee); return; }
+    if s.kind == AST_STMT_RETURN   { render_return(s.returnn); return; }
+    if s.kind == AST_STMT_RAW_EXPR { render_expr(s.raw_expr); return; }
+    if s.kind == AST_STMT_BREAK    { print("(BREAK)"); return; }
+    if s.kind == AST_STMT_CONTINUE { print("(CONTINUE)"); return; }
     println(fmt_hex(s.kind));
     error("unknown stmt kind for render");
 }
@@ -1663,10 +1660,10 @@ fn render_ast(ast:*AST) {
     i:int=0;
     while i < ast.defs_len {
         d:AST_Def = ast.defs[i];
-        if d.kind == AST_DEF_FUN {render_fun_def(d.fun);}
-        if d.kind == AST_DEF_CONST {render_const_def(d.global);}
-        if d.kind == AST_DEF_VAR {render_var_def(d.global);}
-        if d.kind == AST_DEF_TYPE {render_type_def(d.stru);}
+        if d.kind == AST_DEF_FUN   { render_fun_def(d.fun);}
+        if d.kind == AST_DEF_CONST { render_const_def(d.global);}
+        if d.kind == AST_DEF_VAR   { render_var_def(d.global);}
+        if d.kind == AST_DEF_TYPE  { render_type_def(d.stru);}
         i=i+1;
     }
     println("");
@@ -1949,11 +1946,11 @@ fn sym_add_varconst(def:AST_Stmt_Declare, kind:int) int {
 }
 
 fn sym_add_global_var(def:AST_Stmt_Declare) int {
-  return sym_add_varconst(def, SYM_KIND_VAR);
+    return sym_add_varconst(def, SYM_KIND_VAR);
 }
 
 fn sym_add_global_const(def:AST_Stmt_Declare) int {
-  return sym_add_varconst(def, SYM_KIND_CONST);
+    return sym_add_varconst(def, SYM_KIND_CONST);
 }
 
 fn sym_add_fun(fun:*AST_Def_Fun) int {
@@ -2032,8 +2029,8 @@ fn sym_stack_search(name:*char, name_len:int) int {
         f:SSSFrame = SSS.frames[i];
         j:int = f.len -1;
         while j >= 0 {
-            if name_len == f.entries[j].name_len &&
-               streq(name, f.entries[j].name, name_len) {
+            if name_len == f.entries[j].name_len
+            && streq(name, f.entries[j].name, name_len) {
                 return f.entries[j].sym_idx;
             }
             j=j-1;
@@ -2051,7 +2048,7 @@ fn sym_all() *SymT { return ST; }
 ////////////////////////////////////
 
 fn tc_can_unify(from:Type, to:Type) bool {
-  return size_of_type(from) == size_of_type(to);
+    return size_of_type(from) == size_of_type(to);
 }
 
 
@@ -2330,7 +2327,6 @@ fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
                 lvalue.ty = tc_subscript(&lvalue.binop);
                 valid = true;
             }
-            if !valid { error("Expression is not assignable"); }
         }
         if lvalue.kind == AST_EXPR_UNOP {
             if (lvalue.unop.op != TOK_ASTERISK) {
@@ -2392,10 +2388,15 @@ fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
     }
     if stmt.kind == AST_STMT_RAW_EXPR {
         tc_expr(&stmt.raw_expr);
+        return;
     }
-    // if stmt.kind == AST_STMT_BREAK
-    // || stmt.kind == AST_STMT_CONTINUE {
-    // }
+    if stmt.kind == AST_STMT_BREAK
+    || stmt.kind == AST_STMT_CONTINUE {
+        // nothign to check
+        return;
+    }
+    println(fmt_dec(stmt.kind));
+    error("unhandled statement kind");
 }
 
 fn tc_block(b:*Block, ret:Type) {
@@ -2428,13 +2429,13 @@ fn tc_fun(fun:*AST_Def_Fun) {
     b:*Block = &fun.block;
 
     // insert last "return;" for void functions
-    if (fun.return_type.kind == TYPE_KIND_BASE
-        && fun.return_type.base == TYPE_VOID
-        && b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN) {
+    if fun.return_type.kind == TYPE_KIND_BASE
+    && fun.return_type.base == TYPE_VOID
+    && b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN {
         ret_stmt:AST_Stmt;
         ret_stmt.kind = AST_STMT_RETURN;
         ret_stmt.returnn.expr = 0;
-        if (b.stmt_cap <= b.stmts_len) {
+        if b.stmt_cap <= b.stmts_len {
             b.stmt_cap = b.stmt_cap + 1;
             b.stmts = realloc(b.stmts, b.stmt_cap * SIZEOF_AST_Stmt);
         }
@@ -2443,22 +2444,23 @@ fn tc_fun(fun:*AST_Def_Fun) {
     }
 
     // check that some last return exists
-    if (b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN) {
+    if b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN {
         error("function without return");
     }
     sym_pop_frame();
 }
 
 fn tc_def(def:*AST_Def) {
-  if def.kind == AST_DEF_CONST
-  || def.kind == AST_DEF_VAR
-  || def.kind == AST_DEF_TYPE {
+    if def.kind == AST_DEF_CONST
+    || def.kind == AST_DEF_VAR
+    || def.kind == AST_DEF_TYPE {
         return;
-  }
-  if def.kind == AST_DEF_FUN {
-    tc_fun(&def.fun);
-    return;
-  }
+    }
+    if def.kind == AST_DEF_FUN {
+        tc_fun(&def.fun);
+        return;
+    }
+    error("unhandled def kind");
 }
 
 fn define_top_level(ast:*AST) {
@@ -2574,6 +2576,8 @@ fn cqo() { write_ins1("cqo"); }
 fn rep_movsb() { write_ins1("rep movsb"); }
 fn ret() { write_ins1("ret"); }
 
+fn jnz(val:*char) { write_ins2("jnz", val); }
+fn jz(val:*char) { write_ins2("jz", val); }
 fn pop(val:*char) { write_ins2("pop", val); }
 fn push(val:*char) { write_ins2("push", val); }
 fn push_s(size:*char, val:*char) {
@@ -2603,6 +2607,7 @@ fn idiv(dst:*char) { write_ins2("idiv", dst); }
 fn je(dst:*char) { write_ins2("je", dst); }
 fn jmp(dst:*char) { write_ins2("jmp", dst); }
  
+fn test(dst:*char, src:*char) { write_ins3("test", strcat(dst, ","), src); }
 fn xor(dst:*char, src:*char)  { write_ins3("xor", strcat(dst, ","), src); }
 fn cmp(dst:*char, src:*char)  { write_ins3("cmp", strcat(dst, ","), src); }
 fn mov(dst:*char, src:*char)  { write_ins3("mov", strcat(dst, ","), src); }
@@ -2620,6 +2625,10 @@ fn or(dst:*char, src:*char)   { write_ins3("or", strcat(dst, ","), src); }
 
 fn str_lbl(num:int) *char {
     return strcat("STR_", fmt_dec(num));
+}
+
+fn bool_lbl(num:int) *char {
+    return strcat("BOOL_", fmt_dec(num));
 }
 
 fn if_lbl(num:int) *char {
@@ -2642,9 +2651,7 @@ fn glbl_lbl(val:*char, len:int) *char {
         i=i+1;
     }
     bfr[i] = '\0';
-
     bfr = strcat("GLBL_", bfr);
-
     return bfr;
 }
 
@@ -2658,7 +2665,6 @@ fn offset_plus(a:*char, off:int) *char{
     return deref(strcat(strcat(a, "+"), fmt_dec(off)));
 }
 
-
 fn cg_op_word_size(t:Type) int {
     if t.kind == TYPE_KIND_PTR { return 8; }
     if t.base == TYPE_CHAR { return 1; }
@@ -2669,7 +2675,7 @@ fn cg_op_word_size(t:Type) int {
 }
 
 fn cg_op_register(t:Type, idx:int) *char {
-    if (idx > 1) {
+    if idx > 1 {
         error("register idx not supported\n");
     }
     size:int = cg_op_word_size(t);
@@ -2720,8 +2726,6 @@ struct CG_StrMap {
 
 var CG_LBL_CTR:int = 0;
 var CG_STRS:*CG_StrMap = 0;
-// int CG_LBL_CTR = 0;
-// CG_StrMap CG_STRS;
 
 fn cg_init_maps() {
     CG_STRS = alloc(24);
@@ -2735,7 +2739,7 @@ fn cg_lbl() int {
     return CG_LBL_CTR; 
 }
 fn save_const_string(s:AST_Expr_Lit_String) int {
-    if (CG_STRS == 0) {
+    if CG_STRS == 0 {
         CG_STRS = alloc(24);
         CG_STRS.len = 0;
         CG_STRS.cap = 32;
@@ -2743,11 +2747,9 @@ fn save_const_string(s:AST_Expr_Lit_String) int {
     }
     
     lbl:int = cg_lbl();
-    if (CG_STRS.len >= CG_STRS.cap) {
+    if CG_STRS.len >= CG_STRS.cap {
         CG_STRS.cap = CG_STRS.cap*2;
-        CG_STRS.strings = realloc(
-            CG_STRS.strings,
-            CG_STRS.cap * 24);
+        CG_STRS.strings = realloc(CG_STRS.strings, CG_STRS.cap * 24);
     }
     e:CG_StrEntry;
     e.text = s.text;
@@ -2854,8 +2856,31 @@ fn cg_subscript(binop:AST_Expr_Binop, t:Type) {
 }
 
 fn cg_binop(binop:AST_Expr_Binop, t:Type) {
-    if (binop.op == TOK_PERIOD) { cg_access(binop, t); return; }
-    if (binop.op == TOK_LSQBR) { cg_subscript(binop, t); return; }
+    if binop.op == TOK_PERIOD { cg_access(binop, t); return; }
+    if binop.op == TOK_LSQBR { cg_subscript(binop, t); return; }
+    if binop.op == TOK_AND
+    || binop.op == TOK_OR {
+        eval_right_lbl:*char = bool_lbl(cg_lbl());
+        if_end_lbl:*char = bool_lbl(cg_lbl());
+        cg_expr(*binop.left);
+        pop("rax");
+        test("rax", "rax");
+        if binop.op == TOK_AND {
+            jnz(eval_right_lbl);
+            push("0");
+        }
+        if binop.op == TOK_OR {
+            jz(eval_right_lbl);
+            push("1");
+        }
+        jmp(if_end_lbl);
+
+        cg_label(eval_right_lbl);
+        cg_expr(*binop.right); // leave the bool result from
+                               // the right on the stack
+        cg_label(if_end_lbl);
+        return;
+	}
     
     cg_expr(*binop.left);
     cg_expr(*binop.right);
@@ -2916,13 +2941,11 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
         shr(reg_a, "cl");
         op_type = OPTYPE_ARITH;
 	}
-    if binop.op == TOK_AMPERSAND
-    || binop.op == TOK_AND {
+    if binop.op == TOK_AMPERSAND {
         and(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
-	}
-    if binop.op == TOK_BIT_OR
-    || binop.op == TOK_OR {
+    }
+    if binop.op == TOK_BIT_OR {
         or(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
 	}
@@ -2953,15 +2976,17 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
 
     if op_type == OPTYPE_ARITH {
         push("rax");
+        return;
     } 
     if (op_type == OPTYPE_BOOL) {
         push("rcx");
+        return;
     }
+    error("invalid optype");
 }
 
 
 fn cg_syscall(call:AST_Expr_Call) {
-
     i:int = 1;
     while i < call.args_len {
         cg_expr(call.args[i]);
@@ -2975,7 +3000,7 @@ fn cg_syscall(call:AST_Expr_Call) {
 }
 
 fn cg_call(call:AST_Expr_Call) {
-    if (call.is_syscall) {cg_syscall(call); return;}
+    if (call.is_syscall) { cg_syscall(call); return; }
 
     assert(call.fun_expr.kind == AST_EXPR_VAR);
     fun_sym:*Symbol = sym_search(call.fun_expr.varr.sym_idx);
@@ -2985,7 +3010,7 @@ fn cg_call(call:AST_Expr_Call) {
     while i < call.args_len {
         arg:AST_Expr = call.args[i];
         cg_expr(arg);
-        if (arg.ty.kind == TYPE_KIND_STRUCT) {
+        if arg.ty.kind == TYPE_KIND_STRUCT {
             s:*Symbol = sym_search(call.temporary_sym_idxs[i]);
             pop("rax");
             lea("rbx", offset_min("rbp", s.offset));
@@ -2999,7 +3024,7 @@ fn cg_call(call:AST_Expr_Call) {
     }
 
     sret_reg_off:int = 0;
-    if (fun_sym.fun.return_type.kind == TYPE_KIND_STRUCT) {
+    if fun_sym.fun.return_type.kind == TYPE_KIND_STRUCT {
         sret_reg_off = sret_reg_off+1;
         sret_sym:*Symbol = sym_search(call.temporary_sret_sym_idx);
         lea(arg_regs(0), offset_min("rbp", sret_sym.offset));
@@ -3016,7 +3041,7 @@ fn cg_call(call:AST_Expr_Call) {
     calln(fun_name, fun_name_len);
     ret:Type = fun_sym.fun.return_type;
 
-    if (ret.kind != TYPE_KIND_BASE || ret.base != TYPE_VOID) {
+    if ret.kind != TYPE_KIND_BASE || ret.base != TYPE_VOID {
         push("rax");
     }
 }
@@ -3370,15 +3395,14 @@ fn cg_fun_def(fun:AST_Def_Fun) {
 }
 
 fn cg_data_def(d:AST_Stmt_Declare) {
-    if d.t.kind == TYPE_KIND_PTR {
-        if d.t.ptr.base == TYPE_CHAR {
-            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
-            glbl = strcat(glbl, ": db \"");
-            glbl = strcat(glbl, d.expr.lit_string.text);
-            glbl = strcat(glbl, ", 0");
-            write_ins(glbl);
-            return;
-        }
+    if d.t.kind == TYPE_KIND_PTR
+    && d.t.ptr.base == TYPE_CHAR {
+        glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+        glbl = strcat(glbl, ": db \"");
+        glbl = strcat(glbl, d.expr.lit_string.text);
+        glbl = strcat(glbl, ", 0");
+        write_ins(glbl);
+        return;
     }
     if (d.t.kind == TYPE_KIND_PTR) {
         glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
@@ -3487,7 +3511,7 @@ fn cg_data() {
 
 fn gen_asm(ast:AST, output_file:*char) {
     CG_F = open(output_file, O_WRONLY|O_CREAT|O_TRUNC, O_PERM);
-    if (CG_F == 0) {
+    if CG_F == 0 {
         error("unable to open output file");
     }
 
@@ -3496,7 +3520,7 @@ fn gen_asm(ast:AST, output_file:*char) {
 
     i:int = 0;
     while i < ast.defs_len {
-        if (ast.defs[i].kind == AST_DEF_FUN) {
+        if ast.defs[i].kind == AST_DEF_FUN {
             cg_fun_def(ast.defs[i].fun);
         }
         i=i+1;
@@ -3546,9 +3570,7 @@ fn parse_flags(argc:int, argv:**char) Flags {
     }
     if argc == 4 {
         flag:*char = argv[2];
-        if !streq(flag, "-o", 2) {
-            error_usage();
-        }
+        if !streq(flag, "-o", 2) { error_usage(); }
         f.output_file = argv[3];
     }
     return f;
