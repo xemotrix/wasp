@@ -1,0 +1,1057 @@
+const SIZE_BYTE:int  = 0;
+const SIZE_WORD:int  = 1;
+const SIZE_DWORD:int = 2;
+const SIZE_QWORD:int = 3;
+
+var CG_F:int = 0; // file descriptor
+
+fn make_ins2(a:*char, b:*char) *char {
+    return strcat(strcat(a, " "), b);
+}
+fn make_ins3(a:*char, b:*char, c:*char) *char {
+    return make_ins2(make_ins2(a, b), c);
+}
+fn make_ins4(a:*char, b:*char, c:*char, d:*char) *char {
+    return make_ins2(make_ins3(a, b, c), d);
+}
+fn make_ins5(a:*char, b:*char, c:*char, d:*char, e:*char) *char {
+    return make_ins2(make_ins4(a, b, c, d), e);
+}
+
+fn write_arbirary_n(s:*char, len:int){
+    write_to(CG_F, s, len);
+}
+fn write_arbirary(s:*char){
+    len:int = strlen(s);
+    write_to(CG_F, s, len);
+}
+fn write_char(c:char){
+    bfr:*char = alloc(3);
+    bfr[0] = c;
+    len:int = 1;
+    if c <= '\r'{
+        if c == '\r' { bfr = "\r"; }
+        if c == '\n' { bfr = "\n"; }
+        if c == '\t' { bfr = "\t"; }
+        if c == '\0' { bfr = "\0"; }
+        len=2;
+    }
+    if c == '"' { bfr = "\""; }
+    write_to(CG_F, bfr, len);
+}
+
+fn write_ins(ins:*char) {
+    str:*char=strcat(strcat("\t", ins), "\n");
+    len:int=strlen(str);
+    write_to(CG_F, str, len);
+}
+fn write_ins1(a:*char) {
+    write_ins(a);
+}
+fn write_ins2(a:*char, b:*char) {
+    write_ins(make_ins2(a,b));
+}
+fn write_ins3(a:*char, b:*char, c:*char) {
+    write_ins(make_ins3(a,b,c));
+}
+fn write_ins4(a:*char, b:*char, c:*char, d:*char) {
+    write_ins(make_ins4(a,b,c,d));
+}
+fn write_ins5(a:*char, b:*char, c:*char, d:*char, e:*char) {
+    write_ins(make_ins5(a,b,c,d,e));
+}
+
+fn write_lbl(lbl:*char) {
+    str:*char=strcat(lbl, "\n");
+    len:int=strlen(str);
+    write_to(CG_F, str, len);
+}
+fn write_nl() {
+    write_to(CG_F, "\n", 1);
+}
+
+fn syscall_() { write_ins1("syscall"); }
+fn cqo() { write_ins1("cqo"); }
+fn rep_movsb() { write_ins1("rep movsb"); }
+fn ret() { write_ins1("ret"); }
+
+fn jnz(val:*char) { write_ins2("jnz", val); }
+fn jz(val:*char) { write_ins2("jz", val); }
+fn inc(val:*char) { write_ins2("inc", val); }
+fn dec(val:*char) { write_ins2("dec", val); }
+fn pop(val:*char) { write_ins2("pop", val); }
+fn push(val:*char) { write_ins2("push", val); }
+fn push_s(size:*char, val:*char) {
+    write_ins3("push", size, val);
+}
+fn calln(val:*char, len:int) { 
+    bfr:*char = alloc(len+1);
+    i:int = 0;
+    while i < len {
+        bfr[i] = val[i];
+        i++;
+    }
+    bfr[len] = '\0';
+    call(bfr); 
+    free(bfr);
+}
+fn call(val:*char) { write_ins2("call", val); }
+fn sete(val:*char) { write_ins2("sete", val); }
+fn setne(val:*char) { write_ins2("setne", val); }
+fn setg(val:*char) { write_ins2("setg", val); }
+fn setge(val:*char) { write_ins2("setge", val); }
+fn setl(val:*char) { write_ins2("setl", val); }
+fn setle(val:*char) { write_ins2("setle", val); }
+fn not(val:*char) { write_ins2("not", val); }
+fn neg(val:*char) { write_ins2("neg", val); }
+fn idiv(dst:*char) { write_ins2("idiv", dst); }
+fn je(dst:*char) { write_ins2("je", dst); }
+fn jmp(dst:*char) { write_ins2("jmp", dst); }
+ 
+fn test(dst:*char, src:*char) { write_ins3("test", strcat(dst, ","), src); }
+fn xor(dst:*char, src:*char)  { write_ins3("xor", strcat(dst, ","), src); }
+fn cmp(dst:*char, src:*char)  { write_ins3("cmp", strcat(dst, ","), src); }
+fn mov(dst:*char, src:*char)  { write_ins3("mov", strcat(dst, ","), src); }
+fn mov_s(size:*char, dst:*char, src:*char)  { 
+    write_ins4("mov", size, strcat(dst, ","), src); 
+}
+fn lea(dst:*char, src:*char)  { write_ins3("lea", strcat(dst, ","), src); }
+fn imul(dst:*char, src:*char) { write_ins3("imul", strcat(dst, ","), src); }
+fn add(dst:*char, src:*char)  { write_ins3("add", strcat(dst, ","), src); }
+fn sub(dst:*char, src:*char)  { write_ins3("sub", strcat(dst, ","), src); }
+fn shl(dst:*char, src:*char)  { write_ins3("shl", strcat(dst, ","), src); }
+fn shr(dst:*char, src:*char)  { write_ins3("shr", strcat(dst, ","), src); }
+fn and(dst:*char, src:*char)  { write_ins3("and", strcat(dst, ","), src); }
+fn or(dst:*char, src:*char)   { write_ins3("or", strcat(dst, ","), src); }
+
+fn str_lbl(num:int) *char {
+    return strcat("STR_", fmt_dec(num));
+}
+
+fn bool_lbl(num:int) *char {
+    return strcat("BOOL_", fmt_dec(num));
+}
+
+fn if_lbl(num:int) *char {
+    return strcat("IF_", fmt_dec(num));
+}
+
+fn while_cond_lbl(num:int) *char {
+    return strcat("WHC_", fmt_dec(num));
+}
+fn while_end_lbl(num:int) *char {
+    return strcat("WHE_", fmt_dec(num));
+}
+
+fn glbl_lbl(val:*char, len:int) *char {
+    bfr:*char = alloc(256);
+    i:int = 0;
+    while i < len {
+        if (val[i] == '\0') { break; }
+        bfr[i] = val[i];
+        i++;
+    }
+    bfr[i] = '\0';
+    bfr = strcat("GLBL_", bfr);
+    return bfr;
+}
+
+fn deref(val:*char) *char {
+    return strcat(strcat("[", val), "]");
+}
+fn offset_min(a:*char, off:int) *char{
+    return deref(strcat(strcat(a, "-"), fmt_dec(off)));
+}
+fn offset_plus(a:*char, off:int) *char{
+    return deref(strcat(strcat(a, "+"), fmt_dec(off)));
+}
+
+fn cg_op_word_size(t:Type) int {
+    if t.kind == TYPE_KIND_PTR { return 8; }
+    if t.base == TYPE_CHAR { return 1; }
+    if t.base == TYPE_BOOL { return 1; }
+    if t.base == TYPE_INT { return 8; }
+    error("void or unknown register");
+    return -1;
+}
+
+fn cg_op_register(t:Type, idx:int) *char {
+    if idx > 1 {
+        error("register idx not supported\n");
+    }
+    size:int = cg_op_word_size(t);
+    if idx == 0 {
+        if size == 8 { return "rax";}
+        if size == 1 { return "al";}
+    }
+    if idx == 1 {
+        if size == 8 { return "rbx";}
+        if size == 1 { return "bl";}
+    }
+    error("unsupported op register");
+    return 0;
+}
+
+fn syscall_regs(idx:int) *char {
+    if idx == 0 { return "rdi"; }
+    if idx == 1 { return "rsi"; }
+    if idx == 2 { return "rdx"; }
+    if idx == 3 { return "r10"; }
+    if idx == 4 { return "r8"; }
+    if idx == 5 { return "r9"; }
+    error("unsupported syscal reg idx");
+    return 0;
+}
+
+fn arg_regs(idx:int) *char {
+    if idx == 0 { return "rdi"; }
+    if idx == 1 { return "rsi"; }
+    if idx == 2 { return "rdx"; }
+    if idx == 3 { return "rcx"; }
+    if idx == 4 { return "r8"; }
+    if idx == 5 { return "r9"; }
+    error("unsupported arg reg idx");
+    return 0;
+}
+
+struct CG_StrEntry {
+  text:*char;
+  label:int;
+}
+
+struct CG_StrMap {
+  strings:*CG_StrEntry;
+  len:int;
+  cap:int;
+}
+
+var CG_LBL_CTR:int = 0;
+var CG_STRS:*CG_StrMap = 0;
+
+fn cg_init_maps() {
+    CG_STRS = alloc(24);
+    CG_STRS.len = 0;
+    CG_STRS.cap = 4;
+    CG_STRS.strings = alloc(CG_STRS.cap * 16);
+}
+
+fn cg_lbl() int { 
+    CG_LBL_CTR++;
+    return CG_LBL_CTR; 
+}
+fn save_const_string(s:AST_Expr_Lit_String) int {
+    if CG_STRS == 0 {
+        CG_STRS = alloc(24);
+        CG_STRS.len = 0;
+        CG_STRS.cap = 32;
+        CG_STRS.strings = alloc(CG_STRS.cap * 16);
+    }
+    
+    lbl:int = cg_lbl();
+    if CG_STRS.len >= CG_STRS.cap {
+        CG_STRS.cap = CG_STRS.cap*2;
+        CG_STRS.strings = realloc(CG_STRS.strings, CG_STRS.cap * 24);
+    }
+    e:CG_StrEntry;
+    e.text = s.text;
+    e.label = lbl;
+    CG_STRS.strings[CG_STRS.len++] = e;
+    return lbl;
+}
+
+fn cg_head() {
+    write_lbl("global _start");
+    write_lbl("section .text");
+}
+
+fn cg_entry() {
+    write_lbl("\n_start:");
+    mov("rdi", "[rsp]");
+    lea("rsi", "[rsp+8]");
+    call("main");
+    mov("rdi", "rax");
+    mov("rax", "60");
+    syscall_();
+}
+
+fn cg_unop(unop:AST_Expr_Unop, t:Type) {
+    if unop.op == TOK_TILDE {
+        cg_expr(*unop.expr);
+        pop("rax");
+        not("rax");
+        push("rax");
+        return;
+    }
+    if unop.op == TOK_PLUSPLUS
+    || unop.op == TOK_MINUSMINUS {
+        cg_lvalue(*unop.expr);
+        pop("rax");
+        mov("rbx", deref("rax"));
+        push("rbx");
+        if unop.op == TOK_PLUSPLUS { inc("rbx"); }
+        if unop.op == TOK_MINUSMINUS { dec("rbx"); }
+        mov(deref("rax"), "rbx");
+        return;
+    }
+    if unop.op == TOK_BANG {
+        cg_expr(*unop.expr);
+        pop("rax");
+        xor("rbx", "rbx");
+        cmp("rax", "0");
+        sete("bl");
+        push("rbx");
+        return;
+    }
+    if unop.op == TOK_AMPERSAND {
+        if unop.expr.kind == AST_EXPR_BINOP {
+          // codegen the content as an lvalue to get the address on the stack
+          cg_lvalue(*unop.expr);
+          return;
+        }
+        if unop.expr.kind == AST_EXPR_VAR {
+            s:*Symbol = sym_search(unop.expr.varr.sym_idx);
+            if s.kind == SYM_KIND_STACK_ARG {
+            if s.t.kind == TYPE_KIND_STRUCT {
+                lea("rax", offset_min("rbp", s.offset));
+                push_s("QWORD", deref("rax"));
+                return;
+            }}
+            lea("rax", offset_min("rbp", s.offset));
+            push("rax");
+            return;
+        }
+        error("unsupported reference to expression of kind");
+    }
+    if unop.op == TOK_ASTERISK {
+        cg_expr(*unop.expr);
+        if unop.expr.ty.ptr.kind == TYPE_KIND_STRUCT {
+          // do nothing as we want the address on the stack
+          return;
+        }
+        pop("rax");
+        push_s("QWORD", deref("rax"));
+        return;
+    }
+    if unop.op == TOK_MINUS {
+        cg_expr(*unop.expr);
+        pop("rax");
+        neg("rax");
+        push("rax");
+        return;
+    }
+    if unop.op == TOK_PLUS {
+        return;
+    }
+    error("unimplemented unop");
+}
+
+fn cg_subscript_reference(binop:AST_Expr_Binop, t:Type) {
+    assert(binop.op == TOK_LSQBR);
+    cg_expr(*binop.left);
+    cg_expr(*binop.right);
+
+    pop("rax"); // idx (int)
+    pop("rbx"); // ptr
+    size:int = size_of_type(t);
+    imul("rax", fmt_dec(size));
+    add("rbx", "rax");
+    push("rbx");
+}
+
+fn cg_subscript(binop:AST_Expr_Binop, t:Type) {
+    cg_subscript_reference(binop, t);
+    if t.kind != TYPE_KIND_STRUCT {
+        pop("rax");
+        push_s("QWORD", deref("rax"));
+    }
+}
+
+fn cg_binop(binop:AST_Expr_Binop, t:Type) {
+    if binop.op == TOK_PERIOD { cg_access(binop, t); return; }
+    if binop.op == TOK_LSQBR { cg_subscript(binop, t); return; }
+    if binop.op == TOK_AND
+    || binop.op == TOK_OR {
+        eval_right_lbl:*char = bool_lbl(cg_lbl());
+        if_end_lbl:*char = bool_lbl(cg_lbl());
+        cg_expr(*binop.left);
+        pop("rax");
+        test("rax", "rax");
+        if binop.op == TOK_AND {
+            jnz(eval_right_lbl);
+            push("0");
+        }
+        if binop.op == TOK_OR {
+            jz(eval_right_lbl);
+            push("1");
+        }
+        jmp(if_end_lbl);
+
+        cg_label(eval_right_lbl);
+        cg_expr(*binop.right); // leave the bool result from
+                               // the right on the stack
+        cg_label(if_end_lbl);
+        return;
+	}
+    
+    cg_expr(*binop.left);
+    cg_expr(*binop.right);
+    
+    pop("rbx");
+    pop("rax");
+    
+    reg_a:*char = cg_op_register(binop.left.ty, 0);
+    reg_b:*char = cg_op_register(binop.right.ty, 1);
+    
+    OPTYPE_ARITH:int = 1;
+    OPTYPE_BOOL:int = 2;
+    op_type:int = 0;
+    
+    if binop.op == TOK_EQUALSEQUALS {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        sete("cl");
+        op_type = OPTYPE_BOOL;
+    }
+    if binop.op == TOK_BANGEQUALS {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        setne("cl");
+        op_type = OPTYPE_BOOL;
+	}
+    if binop.op == TOK_GT {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        setg("cl");
+        op_type = OPTYPE_BOOL;
+	}
+    if binop.op == TOK_GTE {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        setge("cl");
+        op_type = OPTYPE_BOOL;
+	}
+    if binop.op == TOK_LT {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        setl("cl");
+        op_type = OPTYPE_BOOL;
+	}
+    if binop.op == TOK_LTE {
+        xor("rcx", "rcx");
+        cmp(reg_a, reg_b);
+        setle("cl");
+        op_type = OPTYPE_BOOL;
+	}
+    if binop.op == TOK_SHIFT_LEFT {
+        mov("rcx", "rbx");
+        shl(reg_a, "cl");
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_SHIFT_RIGHT {
+        mov("rcx", "rbx");
+        shr(reg_a, "cl");
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_AMPERSAND {
+        and(reg_a, reg_b);
+        op_type = OPTYPE_ARITH;
+    }
+    if binop.op == TOK_BIT_OR {
+        or(reg_a, reg_b);
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_PLUS {
+        add(reg_a, reg_b);
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_MINUS {
+        sub(reg_a, reg_b);
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_ASTERISK {
+        imul(reg_a, reg_b);
+        op_type = OPTYPE_ARITH;
+	}
+    if binop.op == TOK_SLASH {
+        cqo();// sign extend rax to RDX {RAX
+        idiv("rbx");
+        push("rax");
+        return;
+    }
+    if binop.op == TOK_PERCENT {
+        cqo();// sign extend rax to RDX {RAX
+        idiv("rbx");
+        push("rdx");
+        return;
+    }
+
+    if op_type == OPTYPE_ARITH {
+        push("rax");
+        return;
+    } 
+    if (op_type == OPTYPE_BOOL) {
+        push("rcx");
+        return;
+    }
+    error("invalid optype");
+}
+
+
+fn cg_syscall(call:AST_Expr_Call) {
+    i:int = 0;
+    while i < call.args_len {
+        cg_expr(call.args[i]);
+        i++;
+    }
+    i = call.args_len - 1;
+    while i >= 1 {
+        pop(syscall_regs(i-1));
+        i=i-1;
+    }
+    pop("rax"); // first arg is sycall code
+    syscall_();
+    push("rax");
+}
+
+fn cg_builtin_call(call:AST_Expr_Call) {
+    if call.fun_expr.builtin == BUILTIN_SYSCALL {
+        cg_syscall(call);
+        return;
+    }
+    error("That builtin doesn't exist");
+}
+
+fn cg_call(call:AST_Expr_Call) {
+    if (call.fun_expr.kind == AST_EXPR_BUILTIN) {
+        cg_builtin_call(call);
+        return;
+    }
+
+    assert(call.fun_expr.kind == AST_EXPR_VAR);
+    fun_sym:*Symbol = sym_search(call.fun_expr.varr.sym_idx);
+    assert(fun_sym.kind == SYM_KIND_FUN);
+
+    i:int = 0;
+    while i < call.args_len {
+        arg:AST_Expr = call.args[i];
+        cg_expr(arg);
+        if arg.ty.kind == TYPE_KIND_STRUCT {
+            s:*Symbol = sym_search(call.temporary_sym_idxs[i]);
+            pop("rax");
+            lea("rbx", offset_min("rbp", s.offset));
+            mov("rsi", "rax");
+            mov("rdi", "rbx");
+            mov("rcx", fmt_dec(s.sizeb));
+            rep_movsb();
+            push_s("QWORD", "rbx");// push the address of the temporary
+        }
+        i++;
+    }
+
+    sret_reg_off:int = 0;
+    if fun_sym.fun.return_type.kind == TYPE_KIND_STRUCT {
+        sret_reg_off++;
+        sret_sym:*Symbol = sym_search(call.temporary_sret_sym_idx);
+        lea(arg_regs(0), offset_min("rbp", sret_sym.offset));
+    }
+    i = call.args_len - 1;
+    while i >= 0 {
+        pop(arg_regs(i+sret_reg_off));
+        i=i-1;
+    }
+
+    fun_name:*char = call.fun_expr.varr.name;
+    fun_name_len:int = call.fun_expr.varr.name_len;
+
+    calln(fun_name, fun_name_len);
+    ret:Type = fun_sym.fun.return_type;
+
+    if ret.kind != TYPE_KIND_BASE || ret.base != TYPE_VOID {
+        push("rax");
+    }
+}
+
+fn cg_get_access_offset(access:AST_Expr_Binop) int {
+    assert(access.op == TOK_PERIOD);
+    s:*Symbol;
+    if access.left.kind == AST_EXPR_VAR {
+        s = sym_search(access.left.varr.sym_idx);
+        if (s.kind == SYM_KIND_STACK_ARG){
+            return access.offsetb;
+        }
+        return s.offset - access.offsetb;
+    }
+    if access.left.kind == AST_EXPR_BINOP {
+        if (access.left.binop.op == TOK_PERIOD) {
+            return cg_get_access_offset(access.left.binop) - access.offsetb;
+        }
+        if (access.left.binop.op == TOK_LSQBR) {
+            return access.offsetb;
+        }
+        error("unsupported left hand operand");
+    }
+    return access.offsetb;
+}
+
+// Leaves a reference to the target in the stack
+// Structs are referenced by their lowest address
+fn cg_access_reference(access:AST_Expr_Binop, t:Type) {
+    assert(access.op == TOK_PERIOD);
+    if (access.left.ty.kind == TYPE_KIND_PTR) {
+        cg_expr(*access.left);
+    } 
+    if (access.left.ty.kind != TYPE_KIND_PTR) {
+        cg_lvalue(*access.left);
+    }
+    pop("rax");
+    add("rax", fmt_dec(access.offsetb));
+    push("rax");
+}
+
+fn cg_access(access:AST_Expr_Binop, t:Type) {
+    cg_access_reference(access, t);
+    if (t.kind != TYPE_KIND_STRUCT) {
+        // if it's a <=word size field, push the contents
+        // not the address
+        pop("rax");
+        push_s("QWORD", deref("rax"));
+    }
+}
+
+fn cg_expr(expr:AST_Expr) {
+    if expr.kind == AST_EXPR_VAR {
+        s:*Symbol = sym_search(expr.varr.sym_idx);
+        if (s.kind == SYM_KIND_STACK) {
+            if (s.t.kind != TYPE_KIND_STRUCT) {
+                push_s("QWORD", offset_min("rbp", s.offset));
+            }
+            if (s.t.kind == TYPE_KIND_STRUCT) {
+                // if it is a struct we leave a pointer to it's start
+                // on the stack
+                lea("rax", offset_min("rbp", s.offset));
+                push("rax");
+            }
+            return;
+        }
+        if (s.kind == SYM_KIND_STACK_ARG) {
+            if (s.t.kind != TYPE_KIND_STRUCT) {
+                push_s("QWORD", offset_min("rbp", s.offset));
+            }
+            if (s.t.kind == TYPE_KIND_STRUCT) {
+                lea("rax", offset_min("rbp", s.offset));
+                push_s("QWORD", deref("rax"));
+            }
+            return;
+        }
+        assert(s.kind == SYM_KIND_VAR || s.kind == SYM_KIND_CONST);
+        push_s("QWORD", deref(glbl_lbl(expr.varr.name, expr.varr.name_len)));
+        return;
+    }
+    if expr.kind == AST_EXPR_BINOP {
+        cg_binop(expr.binop, expr.ty);
+        return;
+    }
+    if expr.kind == AST_EXPR_UNOP {
+        cg_unop(expr.unop, expr.ty);
+        return;
+    }
+    if expr.kind == AST_EXPR_CALL {
+        cg_call(expr.call);
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_INT {
+        num:int = expr.lit_int.value;
+        if num >= 2147483648 { //0x80000000 
+            mov("rax", fmt_dec(num));
+            push("rax");
+        }
+        if num < 2147483648 {
+            push(fmt_dec(num));
+        }
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_BOOL {
+        push(fmt_dec(expr.lit_bool.value));
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_CHAR {
+        charv:char = expr.lit_char.value;
+        chariptr:*int = &charv;
+        charint:int = *chariptr;
+        charint = charint & 255;
+        push(fmt_dec(charint));
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_STRING {
+        lbl:int = save_const_string(expr.lit_string);
+        push(str_lbl(lbl));
+        return;
+    }
+    error("unimplemented expr");
+}
+
+fn cg_label_n(str_lbl:*char, len:int) {
+    aux:*char = alloc(len+1);
+    i:int = 0;
+    while i < len {
+        aux[i] = str_lbl[i];
+        i++;
+    }
+    aux[i] = '\0';
+    write_lbl(strcat(aux, ":"));
+    free(aux);
+    return;
+}
+
+fn cg_label(str_lbl:*char) {
+    write_lbl(strcat(str_lbl, ":"));
+    return;
+}
+
+fn cg_lvalue(expr:AST_Expr) int {
+    if expr.kind == AST_EXPR_VAR {
+        s:*Symbol = sym_search(expr.varr.sym_idx);
+        if s.kind == SYM_KIND_STACK_ARG {
+            if (s.t.kind == TYPE_KIND_STRUCT) {
+                lea("rax", offset_min("rbp", s.offset));
+                push_s("QWORD", deref("rax"));
+                // here we can't use s.sizeb because
+                // that size is the size of the ptr
+                // and we want to return the actual size
+                // to copy it later
+                return size_of_type(s.t);
+            }
+            // else same as SYM_KIND_STACK
+            lea("rax", offset_min("rbp", s.offset));
+            push("rax");
+            return s.sizeb;
+        }
+        if s.kind == SYM_KIND_STACK {
+            lea("rax", offset_min("rbp", s.offset));
+            push("rax");
+            return s.sizeb;
+        }
+        if s.kind == SYM_KIND_VAR {
+            push_s("QWORD", glbl_lbl(s.def.var_name,s.def.var_name_len));
+            return s.sizeb;
+        }
+        if s.kind == SYM_KIND_CONST {
+            error("trying to write to CONST");
+        }
+        if s.kind == SYM_KIND_FUN {
+            error("trying to write to FUN");
+        }
+        error("unimplemented symbol kind");
+    }
+    if expr.kind == AST_EXPR_BINOP {
+        if (expr.binop.op == TOK_PERIOD) {
+            cg_access_reference(expr.binop, expr.ty);
+            return size_of_type(expr.ty);
+        }
+        if (expr.binop.op == TOK_LSQBR) {
+            cg_subscript_reference(expr.binop, expr.ty);
+            return size_of_type(expr.ty);
+        }
+        error("trying to codegen for non asignable expression");
+    }
+    if expr.kind == AST_EXPR_UNOP {
+        // only derreferences allowed. So we just CG the inner
+        // expression without derreferences.
+        cg_expr(*expr.unop.expr);
+        return size_of_type(expr.ty);
+    }
+  
+    error("trying to codegen for non asignable expression");
+    return 0; // unreachable
+}
+
+fn cg_stmt(stmt:AST_Stmt, break_lbl:*char, continue_lbl:*char) {
+    if stmt.kind == AST_STMT_DEFINE {
+        def:AST_Stmt_Declare = stmt.define;
+        s:*Symbol = sym_search(def.sym_idx);
+
+        write_arbirary("\t; define ");
+        write_arbirary_n(def.var_name, def.var_name_len);
+        write_arbirary("\n");
+
+        if (def.expr == 0) { return; }
+
+        cg_expr(*def.expr);
+        if (def.expr.ty.kind == TYPE_KIND_STRUCT) {
+            pop("rbx");// address to the start of the source.
+            lea("rax", offset_min("rbp", s.offset));// destination
+            mov("rsi", "rbx"); // src
+            mov("rdi", "rax"); // dst
+            mov("rcx", fmt_dec(s.sizeb)); //nbytes
+            rep_movsb(); // copy
+
+        } 
+        if (def.expr.ty.kind != TYPE_KIND_STRUCT) {
+            pop("rax");
+            mov_s("QWORD", offset_min("rbp", s.offset), "rax");
+        }
+        return;
+    }
+    if stmt.kind == AST_STMT_ASSIGN {
+        lsize:int = cg_lvalue(stmt.assign.lvalue);
+        cg_expr(stmt.assign.rvalue);
+        pop("rax");
+        pop("rbx");
+        if stmt.assign.t.kind == TYPE_KIND_PTR {
+            mov(deref("rbx"), "rax");
+            return;
+        }
+        if stmt.assign.t.kind == TYPE_KIND_BASE {
+            if (lsize == 8) {
+                mov(deref("rbx"), "rax");
+                return;
+            }
+            if (lsize == 1) {
+                mov_s("BYTE", deref("rbx"), "al");
+                return;
+            }
+            error("UNIMPLEMENTED: other small base types");
+        }
+        if stmt.assign.t.kind == TYPE_KIND_STRUCT {
+            mov("rsi", "rax");
+            mov("rdi", "rbx");
+            mov("rcx", fmt_dec(lsize));
+            rep_movsb();
+            return;
+        }
+        error("unreachable");
+        return;
+    }
+    if stmt.kind == AST_STMT_IF{
+        cg_expr(*stmt.iff.cond);
+        iflbl:*char = if_lbl(cg_lbl());
+        pop("ax");
+        cmp("al", "0");
+        je(iflbl);
+        cg_block(*stmt.iff.block, break_lbl, continue_lbl);
+        cg_label(iflbl);
+        return;
+    }
+    if stmt.kind == AST_STMT_WHILE {
+        cond_lbl:*char = while_cond_lbl(cg_lbl());
+        end_lbl:*char = while_end_lbl(cg_lbl());
+
+        cg_label(cond_lbl);
+        cg_expr(*stmt.whilee.cond);
+        pop("rax");
+        cmp("rax", "0");
+        je(end_lbl);
+        cg_block(*stmt.whilee.block, end_lbl, cond_lbl);
+        jmp(cond_lbl);
+        cg_label(end_lbl);
+    }
+    if stmt.kind == AST_STMT_RAW_EXPR {
+        cg_expr(stmt.raw_expr);
+        if (stmt.raw_expr.ty.kind != TYPE_KIND_BASE ||
+            stmt.raw_expr.ty.base != TYPE_VOID){
+            pop("r13"); // discard the value from the stack
+                        // TODO: manage different sizes
+        }
+        return;
+    }
+    if stmt.kind == AST_STMT_RETURN {
+        if (stmt.returnn.expr != 0) {
+            cg_expr(*stmt.returnn.expr);
+            pop("rax");
+            if (stmt.returnn.sret_idx > 0) {
+                s:*Symbol = sym_search(stmt.returnn.sret_idx);
+                sizeb:int = size_of_type(stmt.returnn.expr.ty);
+                mov("rbx", offset_min("rbp", s.offset));
+                mov("rsi", "rax");
+                mov("rdi", "rbx");
+                mov("rcx", fmt_dec(sizeb));
+                rep_movsb();
+                mov("rax", "rbx");
+            }
+        }
+        mov("rsp", "rbp");
+        pop("rbp");
+        ret();
+    }
+    if stmt.kind == AST_STMT_BREAK {
+        if break_lbl == 0 { error("trying to break from nothing"); }
+        jmp(break_lbl);
+        return;
+    }
+    if stmt.kind == AST_STMT_CONTINUE {
+        if continue_lbl == 0 { error("trying to continue from nothing"); }
+        jmp(continue_lbl);
+        return;
+    }
+}
+
+fn cg_block(b:Block, break_lbl:*char, continue_lbl:*char) {
+    i:int = 0;
+    while i < b.stmts_len {
+        cg_stmt(b.stmts[i], break_lbl, continue_lbl);
+        i++;
+    }
+}
+
+fn cg_fun_def(fun:AST_Def_Fun) {
+    write_nl();
+    cg_label_n(fun.name, fun.name_len);
+    push("rbp");
+    mov("rbp", "rsp");
+    sub("rsp", fmt_dec(fun.locals_stack_size));
+
+    if (fun.num_args > 6) {
+        // TODO: rest of args come in the stack
+        error("UNIMPLEMENTED args>6");
+    }
+
+    sret_reg_off:int = 0;
+    if (fun.return_type.kind == TYPE_KIND_STRUCT) {
+        mov(offset_min("rbp", 8), arg_regs(0));
+        sret_reg_off++;
+    }
+    i:int =0;
+    while i < fun.num_args {
+        s:*Symbol = sym_search(fun.arg_sym_idxs[i]);
+        mov(offset_min("rbp", s.offset), arg_regs(i+sret_reg_off));
+        i++;
+    }
+    cg_block(fun.block, 0, 0);
+}
+
+fn cg_data_def(d:AST_Stmt_Declare) {
+    if d.t.kind == TYPE_KIND_PTR
+    && d.t.ptr.base == TYPE_CHAR {
+        glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+        glbl = strcat(glbl, ": db \"");
+        glbl = strcat(glbl, d.expr.lit_string.text);
+        glbl = strcat(glbl, ", 0");
+        write_ins(glbl);
+        return;
+    }
+    if (d.t.kind == TYPE_KIND_PTR) {
+        glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+        glbl = strcat(glbl, ": dq ");
+        glbl = strcat(glbl, fmt_dec(d.expr.lit_int.value));
+        write_ins(glbl);
+        return;
+    }
+
+    if (d.t.kind == TYPE_KIND_BASE) {
+        if d.t.base == TYPE_BOOL {
+            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl = strcat(glbl, ": db ");
+            glbl = strcat(glbl, fmt_dec(d.expr.lit_bool.value));
+            write_ins(glbl);
+            return;
+        }
+        if d.t.base == TYPE_INT {
+            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl = strcat(glbl, ": dq ");
+            glbl = strcat(glbl, fmt_dec(d.expr.lit_int.value));
+            write_ins(glbl);
+            return;
+        }
+        if d.t.base == TYPE_CHAR {
+            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl = strcat(glbl, ": db '");
+            bfr:*char = alloc(4);
+            bfr[0] = d.expr.lit_char.value;
+            glbl = strcat(glbl, bfr);
+            free(bfr);
+            glbl = strcat(glbl, "'");
+            write_ins(glbl);
+            return;
+        }
+        if d.t.base == TYPE_VOID {
+            error("VOID data def");
+        }
+    }
+    error("Error: type can't be constant");
+}
+
+fn cg_especial_char_ascii(c:char) int {
+    // needed as we can't cast char to int
+    if c == '\n' { return 10; }
+    if c == '\r' { return 13; }
+    if c == '\t' { return 9; }
+    if c == '\0' { return 0; }
+    if c == '"' { return 34; }
+    error("unexpected special char");
+    return 0;
+}
+
+fn cg_rodata() {
+    // TODO: create string table while lexing
+    write_lbl("\nsection .rodata");
+    if (CG_STRS.len > 0) {
+        i:int = 0;
+        while i < CG_STRS.len {
+            s:CG_StrEntry = CG_STRS.strings[i];
+            lbl:*char=strcat("\tSTR_", fmt_dec(s.label));
+            lbl=strcat(lbl, ": db \"");
+            write_arbirary(lbl);
+
+            j:int=0;
+            while true {
+                c:char = s.text[j++];
+                if (c == '\0') { break; }
+                if (c <= '\r' || c=='"') {
+                    write_arbirary("\", ");
+                    write_arbirary(fmt_dec(cg_especial_char_ascii(c)));
+                    write_arbirary(", \"");
+                    continue;
+                }
+                write_char(c);
+            }
+            write_arbirary("\", 0\n");
+            i++;
+        }
+    }
+    
+    st:*SymT = sym_all();
+    i:int = 0;
+    while i < st.len {
+        if (st.symbols[i].kind == SYM_KIND_CONST) {
+            cg_data_def(st.symbols[i].def);
+        }
+        i++;
+    }
+}
+
+fn cg_data() {
+    write_lbl("\nsection .data");
+    st:*SymT = sym_all();
+
+    i:int=0;
+    while i < st.len {
+        if (st.symbols[i].kind == SYM_KIND_VAR) {
+            cg_data_def(st.symbols[i].def);
+        }
+        i++;
+    }
+}
+
+
+fn gen_asm(ast:AST, output_file:*char) {
+    CG_F = open(output_file, O_WRONLY|O_CREAT|O_TRUNC, O_PERM);
+    if CG_F == 0 {
+        error("unable to open output file");
+    }
+
+    cg_init_maps();
+    cg_head();
+
+    i:int = 0;
+    while i < ast.defs_len {
+        if ast.defs[i].kind == AST_DEF_FUN {
+            cg_fun_def(ast.defs[i].fun);
+        }
+        i++;
+    }
+    
+    cg_entry();
+    cg_rodata();
+    cg_data();
+    close(CG_F);
+}

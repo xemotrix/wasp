@@ -1,0 +1,326 @@
+fn is_whitespace(c:char) bool { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
+fn is_alpha(c:char ) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+fn is_digit(c:char) bool { return c >= '0' && c <= '9'; }
+
+fn lex_peek_token(src:*char) Token {
+    ref:*char = 0;
+    while ref != src {
+        ref = src;
+        while is_whitespace(*src) { src++; }
+        src = src + len_skip_comments(src);
+    }
+
+    t:Token;
+    if (*src == '\0'){
+        t.type = TOK_EOF;
+        return t;
+    }
+
+    if is_digit(*src) { return lex_num(src); }
+    if is_alpha(*src) || *src == '@' { return lex_iden(src); }
+    if *src == '"' { return lex_string(src); }
+    if *src == '\'' { return lex_char(src); }
+
+    t.text = src;
+    t.text_len = 1;
+
+    t.type = -1;
+
+    if *src == '(' { t.type = TOK_LPAREN; }
+    if *src == ')' { t.type = TOK_RPAREN; }
+    if *src == '{' { t.type = TOK_LCURLY; }
+    if *src == '}' { t.type = TOK_RCURLY; }
+    if *src == '[' { t.type = TOK_LSQBR; }
+    if *src == ']' { t.type = TOK_RSQBR; }
+    if *src == '*' { t.type = TOK_ASTERISK; }
+    if *src == '%' { t.type = TOK_PERCENT; }
+    if *src == '/' { t.type = TOK_SLASH; }
+    if *src == ';' { t.type = TOK_SEMICOLON; }
+    if *src == ':' { t.type = TOK_COLON; }
+    if *src == ',' { t.type = TOK_COMMA; }
+    if *src == '.' { t.type = TOK_PERIOD; }
+    if *src == '~' { t.type = TOK_TILDE; }
+    if *src == '+' {
+        t.type = TOK_PLUS; 
+        if src[1] != '\0' && src[1] == '+' {
+            t.type = TOK_PLUSPLUS;
+            t.text_len++;
+        }
+    }
+    if *src == '-' {
+        t.type = TOK_MINUS; 
+        if src[1] != '\0' && src[1] == '-' {
+            t.type = TOK_MINUSMINUS;
+            t.text_len++;
+        }
+    }
+    if *src == '!' {
+        t.type = TOK_BANG;
+        if src[1] != '\0' && src[1] == '=' {
+            t.type = TOK_BANGEQUALS;
+            t.text_len++;
+        }
+    }
+    if *src == '|' {
+        t.type = TOK_BIT_OR;
+        if src[1] != '\0' && src[1] == '|' {
+            t.text_len++;
+            t.type = TOK_OR;
+        }
+    }
+    if *src == '&' {
+        t.type = TOK_AMPERSAND;
+        if src[1] != '\0' && src[1] == '&' {
+            t.text_len++;
+            t.type = TOK_AND;
+        }
+    }
+    if *src == '<' {
+        t.type = TOK_LT;
+        if src[1] != '\0' && src[1] == '=' {
+            t.text_len++;
+            t.type = TOK_LTE;
+        }
+        if src[1] != '\0' && src[1] == '<' {
+            t.text_len++;
+            t.type = TOK_SHIFT_LEFT;
+        }
+    }
+    if *src == '>' {
+        t.type = TOK_GT;
+        if src[1] != '\0' && src[1] == '=' {
+            t.text_len++;
+            t.type = TOK_GTE;
+        }
+        if src[1] != '\0' && src[1] == '>' {
+            t.text_len++;
+            t.type = TOK_SHIFT_RIGHT;
+        }
+    }
+    if *src == '=' {
+        t.type = TOK_EQUALS;
+        if src[1] != '\0' && src[1] == '=' {
+            t.text_len++;
+            t.type = TOK_EQUALSEQUALS;
+        }
+    }
+    if t.type < 0 {
+        error("unknown token");
+    }
+    return t;
+}
+
+fn lex_iden(src:*char) Token {
+    c:int = 1;
+    while is_alpha(src[c]) || is_digit(src[c]) || src[c] == '_' {
+        c++;
+    }
+
+    t:Token;
+    t.text_len = c;
+    t.text = src;
+
+    t.type = -1;
+
+    if c == 2 {
+        if streq(src, "if", c) { t.type = TOK_KW_IF; }
+        if streq(src, "fn", c) { t.type = TOK_KW_FN; }
+    }
+    if c == 3 {
+        if streq(src, "var", c) { t.type = TOK_KW_VAR; }
+        if streq(src, "int", c) { t.type = TOK_TY_INT; }
+    }
+    if c == 4 {
+        if streq(src, "char", c) { t.type = TOK_TY_CHAR; }
+        if streq(src, "void", c) { t.type = TOK_TY_VOID; }
+        if streq(src, "bool", c) { t.type = TOK_TY_BOOL; }
+        if streq(src, "true", c) { t.type = TOK_LIT_BOOL; }
+    }
+    if c == 5 {
+        if streq(src, "const", c) { t.type = TOK_KW_CONST; }
+        if streq(src, "while", c) { t.type = TOK_KW_WHILE; }
+        if streq(src, "break", c) { t.type = TOK_KW_BREAK; }
+        if streq(src, "false", c) { t.type = TOK_LIT_BOOL; }
+    }
+    if c == 6 {
+        if streq(src, "struct", c) { t.type = TOK_KW_STRUCT; }
+        if streq(src, "return", c) { t.type = TOK_KW_RETURN; }
+    }
+    if c == 7 {
+        if streq(src, "include", c) {
+            to_skip:int = lex_include(src);
+            t.type = TOK_SKIP;
+            t.text_len = to_skip;
+        }
+    }
+    if c == 8 {
+        if streq(src, "continue", c) { t.type = TOK_KW_CONTINUE; }
+    }
+    if (t.type < 0) {
+        if *src == '@' { t.type = TOK_BUILTIN; }
+        if *src != '@' { t.type = TOK_IDEN; }
+    }
+    return t;
+}
+
+fn lex_include(src:*char) int {
+    start:int = src;
+    src = src + strlen("include");
+    while is_whitespace(*src) { src++; }
+    if *src != '"' { error("expected \" opening include"); }
+    src++;
+
+    cap:int=256;
+    bfr:*char=alloc(cap);
+
+    i:int = 0;
+    while *src != '"' {
+        if *src == '\0' { error("expected \" closing include"); }
+        if i+1 >= cap { // leave space for the final \0
+            cap = cap * 2;
+            bfr = realloc(bfr, cap);
+        }
+        bfr[i++] = *src;
+        src++;
+    }
+    bfr[i] = '\0';
+    src++;
+
+    lex_file(bfr);
+    assert(TOKENS.tokens[TOKENS.len-1].type == TOK_EOF);
+    TOKENS.len--;
+
+    return src - start;
+}
+
+fn lex_string(src:*char) Token {
+    t:Token;
+    t.text_len = 0;
+    t.text = src;
+    t.type = TOK_LIT_STRING;
+    while true {
+        t.text_len++;
+        if src[t.text_len] == '\0' { error("unfinished string literal"); }
+        if src[t.text_len] == '\\' 
+        && src[t.text_len + 1] != '\0' 
+        && src[t.text_len + 1] == '"' {
+            t.text_len++;
+            continue;
+        }
+        if src[t.text_len] == '"' { break; }
+    }
+    t.text_len++;
+    return t;
+}
+
+fn lex_char(src: *char) Token {
+    t:Token;
+    t.type = TOK_LIT_CHAR;
+    t.text_len = 2;
+    t.text = src;
+    if src[1] == '\\' {
+        valid_escape:bool = false;
+        if src[2] == 'n' || src[2] == 'r'
+        || src[2] == 't' || src[2] == '\\'
+        || src[2] == '0' || src[2] == '\'' {
+            t.text_len++;
+            valid_escape = true;
+        }
+        if !valid_escape { error("unrecognized scaped character"); }
+    }
+  
+    if src[t.text_len] != '\'' { 
+        error("expected closing '");
+    }
+
+    t.text_len++;
+    return t;
+}
+
+fn lex_num(src: *char) Token {
+    len:int = 0;
+    while is_digit(src[len]) { len++; }
+
+    t:Token;
+    t.type = TOK_LIT_INT;
+    t.text_len = len;
+    t.text = src;
+    return t;
+}
+
+fn len_skip_comments(src:*char) int {
+    if src[0] == '\0' || src[1] == '\0' { return 0; }
+    if src[0] != '/' || src[1] != '/' { return 0; }
+
+    i:int = 2;
+    while true {
+        if src[i] == '\n' || src[i] == '\0' { break; }
+        i++;
+    }
+    return i;
+}
+
+fn lex_token(src:**char) Token {
+    ref:*char = 0;
+    while ref != *src {
+        ref = *src;
+        while is_whitespace(**src) {
+            (*src)++;
+        }
+        *src = *src + len_skip_comments(*src);
+    }
+    t:Token = lex_peek_token(*src);
+    *src = *src + t.text_len;
+    return t;
+}
+
+struct TokenTable {
+    tokens:*Token;
+    idx:int;
+    len:int;
+    cap:int;
+}
+
+var TOKENS:*TokenTable = 0;
+
+fn lex_file(file_name:*char) {
+    print("lexing file: '");
+    print(file_name);
+    println("'");
+    
+    fd:int = open(file_name, 0, 0);
+    f:*char = read_file(fd);
+    src:**char = &f;
+
+    t:Token; t.type = -1;
+    while t.type != TOK_EOF {
+        t = lex_token(src);
+        if t.type == TOK_SKIP { continue; }
+        if TOKENS.len >= TOKENS.cap {
+            TOKENS.cap = TOKENS.cap * 2;
+            TOKENS.tokens = realloc(TOKENS.tokens, TOKENS.cap*@size(Token));
+        }
+        TOKENS.tokens[TOKENS.len++] = t;
+    }
+    close(fd);
+}
+
+fn lex(file_name:**char) {
+    TOKENS = alloc(@size(TokenTable));
+    TOKENS.len = 0;
+    TOKENS.idx = 0;
+    TOKENS.cap = 4096;
+    TOKENS.tokens = alloc(TOKENS.cap*@size(Token));
+
+    lex_file(file_name);
+    return;
+}
+
+fn token_next() Token {
+    if TOKENS.idx >= TOKENS.len { error("no more tokens"); }
+    return TOKENS.tokens[TOKENS.idx++];
+}
+fn token_peek() Token {
+    if TOKENS.idx >= TOKENS.len { error("no more tokens"); }
+    return TOKENS.tokens[TOKENS.idx];
+}

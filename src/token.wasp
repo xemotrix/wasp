@@ -1,0 +1,60 @@
+const TOK_IDEN:int         = 0;
+const TOK_BUILTIN:int      = 1;
+const TOK_LIT_INT:int      = 2;
+const TOK_LIT_BOOL:int     = 3;
+const TOK_LIT_STRING:int   = 4;
+const TOK_LIT_CHAR:int     = 5;
+const TOK_TY_VOID:int      = 6;
+const TOK_TY_INT:int       = 7;
+const TOK_TY_BOOL:int      = 8;
+const TOK_TY_CHAR:int      = 9;
+const TOK_KW_IF:int        = 10;
+const TOK_KW_WHILE:int     = 11;
+const TOK_KW_BREAK:int     = 12;
+const TOK_KW_RETURN:int    = 13;
+const TOK_KW_CONST:int     = 14;
+const TOK_KW_VAR:int       = 15;
+const TOK_KW_STRUCT:int    = 16;
+const TOK_KW_CONTINUE:int  = 17;
+const TOK_KW_FN:int        = 18;
+const TOK_PLUSPLUS:int     = 19;
+const TOK_MINUSMINUS:int   = 20;
+const TOK_BANG:int         = 21;
+const TOK_TILDE:int        = 22;
+const TOK_EQUALSEQUALS:int = 23;
+const TOK_BANGEQUALS:int   = 24;
+const TOK_GT:int           = 25;
+const TOK_GTE:int          = 26;
+const TOK_LT:int           = 27;
+const TOK_LTE:int          = 28;
+const TOK_AND:int          = 29;
+const TOK_OR:int           = 30;
+const TOK_BIT_OR:int       = 31;
+const TOK_AMPERSAND:int    = 32;
+const TOK_PLUS:int         = 33;
+const TOK_MINUS:int        = 34;
+const TOK_SHIFT_LEFT:int   = 35;
+const TOK_SHIFT_RIGHT:int  = 36;
+const TOK_ASTERISK:int     = 37;
+const TOK_PERCENT:int      = 38;
+const TOK_SLASH:int        = 39;
+const TOK_PERIOD:int       = 40;
+const TOK_EQUALS:int       = 41;
+const TOK_SEMICOLON:int    = 42;
+const TOK_COLON:int        = 43;
+const TOK_COMMA:int        = 44;
+const TOK_LPAREN:int       = 45;
+const TOK_RPAREN:int       = 46;
+const TOK_LCURLY:int       = 47;
+const TOK_RCURLY:int       = 48;
+const TOK_LSQBR:int        = 49;
+const TOK_RSQBR:int        = 50;
+const TOK_SKIP:int         = 51; // used to skip stuff
+const TOK_EOF:int          = 52;
+
+struct Token {
+  type:int;
+  text:*char;
+  text_len:int;
+}
+

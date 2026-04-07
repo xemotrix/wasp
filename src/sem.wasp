@@ -1,0 +1,475 @@
+fn tc_can_unify(from:Type, to:Type) bool {
+    return size_of_type(from) == size_of_type(to);
+}
+
+fn tc_builtin_call(c:*AST_Expr_Call) Type {
+    if c.fun_expr.builtin == BUILTIN_SYSCALL {
+        i:int = 0;
+        while i < c.args_len {
+            tc_expr(&c.args[i++]);
+        }
+        return ast_new_base_type(TYPE_INT);
+    }
+    error("Unknown builtin");
+    nop:Type;
+    return nop;
+}
+
+fn tc_call(c:*AST_Expr_Call) Type {
+    if c.fun_expr.kind == AST_EXPR_BUILTIN { return tc_builtin_call(c); }
+
+    assert(c.fun_expr.kind == AST_EXPR_VAR);
+    fun_name:*char = c.fun_expr.varr.name;
+    fun_name_len:int = c.fun_expr.varr.name_len;
+    sym_idx:int = sym_stack_search(fun_name, fun_name_len);
+    s:*Symbol = sym_search(sym_idx);
+    c.fun_expr.varr.sym_idx = sym_idx;
+    if s.kind != SYM_KIND_FUN { 
+        println(fmt_dec(s.kind));
+        error("symbol is not a function"); 
+    }
+    f:*AST_Def_Fun = s.fun;
+    if c.args_len != f.num_args {
+        write(c.fun_expr.varr.name, c.fun_expr.varr.name_len); println("");
+        error("function arg number mismatch");
+    }
+    c.temporary_sym_idxs = alloc(c.args_len * 8);
+    i:int = 0;
+    while i < c.args_len {
+        arg:*AST_Expr = &c.args[i];
+        tc_expr(arg);
+        if arg.ty.kind == TYPE_KIND_STRUCT {
+          c.temporary_sym_idxs[i] = sym_add_temporary(arg.ty);
+        } 
+        if arg.ty.kind != TYPE_KIND_STRUCT {
+          c.temporary_sym_idxs[i] = -1;
+        }
+
+        sym_fill_index_if_struct(&f.arg_types[i]);
+        sym_fill_index_if_struct(&c.args[i].ty);
+        if !tc_can_unify(f.arg_types[i], c.args[i].ty) { error("Expected argument type mismatch"); }
+        c.args[i].ty = f.arg_types[i];
+        i++;
+    }
+
+    if f.return_type.kind == TYPE_KIND_STRUCT {
+        c.temporary_sret_sym_idx = sym_add_temporary(f.return_type);
+    } 
+    if f.return_type.kind != TYPE_KIND_STRUCT {
+        c.temporary_sret_sym_idx = -1;
+    }
+
+    return f.return_type;
+}
+
+fn tc_access(access:*AST_Expr_Binop) Type {
+    tc_expr(access.left);
+    valid_left:bool = (access.left.kind == AST_EXPR_BINOP &&
+                        (access.left.binop.op == TOK_PERIOD || access.left.binop.op == TOK_LSQBR))
+                      || (access.left.kind == AST_EXPR_VAR);
+    if !valid_left { error("expression of some kind is not accessible"); }
+
+    left_t:Type = access.left.ty;
+    while left_t.kind == TYPE_KIND_PTR {
+        left_t = *left_t.ptr; // auto derreference
+    }
+
+    if (left_t.kind != TYPE_KIND_STRUCT) {
+        error("can't access type that is not a struct");
+    }
+    ts:TypeStructDef = sym_search_type_idx(left_t.struct_name.sym_idx);
+
+    if (access.right.kind != AST_EXPR_VAR) {
+        error("invalid access expression");
+    }
+    field:*char = access.right.varr.name;
+    field_len:int = access.right.varr.name_len;
+
+    accum_offset:int = 0;
+    i:int = 0;
+    while (i < ts.n_fields) {
+        sym_fill_index_if_struct(&ts.types[i]);
+        if !(field_len == ts.field_name_lens[i] &&
+              streq(ts.field_names[i], field, field_len)) {
+            accum_offset = accum_offset+size_of_type(ts.types[i]);
+            i++;
+            continue;
+        }
+        access.offsetb = accum_offset;
+        return ts.types[i];
+    }
+    error("type doesn't have that field");
+    nop:Type; // unreachable
+    return nop;
+}
+
+fn tc_subscript(binop:*AST_Expr_Binop) Type {
+    assert(binop.op == TOK_LSQBR);
+    tc_expr(binop.left);
+    left_t:Type = binop.left.ty;
+
+    if (left_t.kind != TYPE_KIND_PTR) {
+        error("can't subscript non pointer like an array");
+    }
+
+    tc_expr(binop.right);
+    if (binop.right.ty.kind != TYPE_KIND_BASE ||
+      binop.right.ty.base != TYPE_INT) {
+        error("can't subscript array with non int expression");
+    }
+    return *left_t.ptr;
+}
+
+fn tc_binop(binop:*AST_Expr_Binop) Type {
+    l:*AST_Expr = binop.left;
+    r:*AST_Expr = binop.right;
+    if binop.op == TOK_EQUALSEQUALS 
+    || binop.op == TOK_BANGEQUALS {
+        tc_expr(l);
+        tc_expr(r);
+        if (!tc_can_unify(l.ty, r.ty) && !tc_can_unify(r.ty, l.ty)) {
+            error("can't compare different types with == or !=");
+        }
+        return ast_new_base_type(TYPE_BOOL);
+    }
+    if binop.op == TOK_GT 
+    || binop.op == TOK_GTE
+    || binop.op == TOK_LT
+    || binop.op == TOK_LTE {
+        tc_expr(l);
+        tc_expr(r);
+        if (!tc_can_unify(l.ty, r.ty)) {
+            error("can't compare different typed sizes types with op");
+        }
+        return ast_new_base_type(TYPE_BOOL);
+    }
+    if binop.op == TOK_AND 
+    || binop.op == TOK_OR {
+        tc_expr(l);
+        tc_expr(r);
+        if (!tc_can_unify(l.ty, ast_new_base_type(TYPE_BOOL)) ||
+            !tc_can_unify(r.ty, ast_new_base_type(TYPE_BOOL))) {
+            error("can't perform op on non booleans");
+        }
+        return ast_new_base_type(TYPE_BOOL);
+    }
+    if binop.op == TOK_PLUS
+    || binop.op == TOK_MINUS
+    || binop.op == TOK_ASTERISK
+    || binop.op == TOK_PERCENT
+    || binop.op == TOK_SLASH
+    || binop.op == TOK_SHIFT_LEFT
+    || binop.op == TOK_SHIFT_RIGHT
+    || binop.op == TOK_BIT_OR
+    || binop.op == TOK_AMPERSAND {
+        tc_expr(l);
+        tc_expr(r);
+        if (!tc_can_unify(l.ty, ast_new_base_type(TYPE_INT)) ||
+            !tc_can_unify(r.ty, ast_new_base_type(TYPE_INT))) {
+            error("can't perform arithmetic op on non ints");
+        }
+        return l.ty;
+    }
+    if binop.op == TOK_PERIOD { return tc_access(binop); }
+    if binop.op == TOK_LSQBR { return tc_subscript(binop); }
+    error("invalid operator");
+    nop:Type;//unreachable
+    return nop;
+}
+
+fn tc_unop(unop:*AST_Expr_Unop) Type {
+    tc_expr(unop.expr);
+    if unop.op == TOK_MINUS
+    || unop.op == TOK_PLUS {
+        if (unop.expr.ty.kind != TYPE_KIND_BASE ||
+            unop.expr.ty.base != TYPE_INT) {
+            error("invalid unop");
+        }
+        return unop.expr.ty;
+    }
+    if unop.op == TOK_AMPERSAND {
+        return ast_new_ptr_type(unop.expr.ty);
+    }
+    if unop.op == TOK_BANG
+    || unop.op == TOK_TILDE {
+        return unop.expr.ty;
+    }
+    if unop.op == TOK_ASTERISK {
+        if (unop.expr.ty.kind != TYPE_KIND_PTR) {
+            error("can't derreference non-pointer type");
+        }
+        return *unop.expr.ty.ptr;
+    }
+    if unop.op == TOK_PLUSPLUS 
+    || unop.op == TOK_MINUSMINUS {
+        tc_expr(unop.expr);
+        if !tc_can_unify(unop.expr.ty, ast_new_base_type(TYPE_INT)) {
+            error("can't apply post in(/de)crement to that type");
+        }
+        return unop.expr.ty;
+    }
+    error("unimplemented unop");
+    nop:Type;//unreachable
+    return nop;
+}
+
+fn tc_var(varr:*AST_Expr_Var) Type {
+    sym_idx:int = sym_stack_search(varr.name, varr.name_len);
+    sym:*Symbol = sym_search(sym_idx);
+    varr.sym_idx = sym_idx;
+    return sym.t;
+}
+
+fn tc_expr(expr:*AST_Expr) {
+    if expr.kind == AST_EXPR_BUILTIN {
+        if expr.builtin == BUILTIN_SIZE {
+            sym_fill_index_if_struct(&expr.ty);
+            size:int = size_of_type(expr.ty);
+            expr.kind = AST_EXPR_LIT_INT;
+            expr.lit_int.value = size;
+            expr.ty = ast_new_base_type(TYPE_INT);
+            return;
+        }
+        error("unkown syscall");
+    }
+    if expr.kind == AST_EXPR_LIT_INT {
+        expr.ty = ast_new_base_type(TYPE_INT);
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_CHAR {
+        expr.ty = ast_new_base_type(TYPE_CHAR);
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_BOOL {
+        expr.ty = ast_new_base_type(TYPE_BOOL);
+        return;
+    }
+    if expr.kind == AST_EXPR_LIT_STRING {
+        expr.ty = ast_new_ptr_type(ast_new_base_type(TYPE_CHAR));
+        return;
+    }
+    if expr.kind == AST_EXPR_VAR {
+        expr.ty = tc_var(&expr.varr);
+        return;
+    }
+    if expr.kind == AST_EXPR_UNOP {
+        expr.ty = tc_unop(&expr.unop);
+        return;
+    }
+    if expr.kind == AST_EXPR_BINOP {
+        expr.ty = tc_binop(&expr.binop);
+        return;
+    }
+    if expr.kind == AST_EXPR_CALL {
+        expr.ty = tc_call(&expr.call);
+        return;
+    }
+    print("kind: ");
+    println(fmt_hex(expr.kind));
+    error("unimplemented expr kind");
+}
+
+fn is_valid_lvalue(lvalue:AST_Expr) bool {
+    if lvalue.kind == AST_EXPR_VAR {
+        sym:*Symbol = sym_search(lvalue.varr.sym_idx);
+        if (sym.kind == SYM_KIND_CONST) { return false; }
+        return true;
+    }
+    if lvalue.kind == AST_EXPR_BINOP {
+        if (lvalue.binop.op == TOK_PERIOD) { return true; }
+        if (lvalue.binop.op == TOK_LSQBR) { return true; }
+    }
+    if lvalue.kind == AST_EXPR_UNOP {
+        if lvalue.unop.op == TOK_ASTERISK { return true; }
+    }
+    return false;
+}
+
+fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
+    decl:*AST_Stmt_Declare;
+    if stmt.kind == AST_STMT_DEFINE {
+        decl = &stmt.define;
+        sym_fill_index_if_struct(&decl.t);
+        decl.sym_idx = sym_add_svar(decl.t, decl.var_name, decl.var_name_len);
+        if (decl.expr == 0) { return; }
+        tc_expr(decl.expr);
+        sym_fill_index_if_struct(&decl.expr.ty);
+
+        if (!tc_can_unify(decl.expr.ty, decl.t)) {
+            error("expected type X, but found Y in definition");
+        }
+        return;
+    }
+    if stmt.kind == AST_STMT_ASSIGN {
+        lvalue:*AST_Expr = &stmt.assign.lvalue;
+        tc_expr(lvalue);
+        if !is_valid_lvalue(*lvalue) { error("Expression is not assignable"); }
+
+        if lvalue.kind == AST_EXPR_VAR {
+            stmt.assign.sym_idx = lvalue.varr.sym_idx;
+        }
+        if lvalue.kind == AST_EXPR_BINOP {
+            if (lvalue.binop.op == TOK_PERIOD) {
+                lvalue.ty = tc_access(&lvalue.binop);
+            }
+            if (lvalue.binop.op == TOK_LSQBR) {
+                lvalue.ty = tc_subscript(&lvalue.binop);
+            }
+        }
+
+        rvalue:*AST_Expr = &stmt.assign.rvalue;
+        tc_expr(rvalue);
+
+        sym_fill_index_if_struct(&lvalue.ty);
+        sym_fill_index_if_struct(&rvalue.ty);
+
+        if (!tc_can_unify(lvalue.ty, rvalue.ty)) {
+            error("can't assign expression of type X, to destination of type Y");
+        }
+        stmt.assign.t = lvalue.ty;
+        return;
+    }
+    if stmt.kind == AST_STMT_IF {
+        sym_push_frame();
+        tc_expr(stmt.iff.cond);
+        if (!tc_can_unify(stmt.iff.cond.ty, ast_new_base_type(TYPE_BOOL))) {
+            error("Expected bool in if condition, found other");
+        }
+        tc_block(stmt.iff.block, ret);
+        sym_pop_frame();
+        return;
+    }
+    if stmt.kind == AST_STMT_WHILE {
+        sym_push_frame();
+        tc_expr(stmt.whilee.cond);
+        if (!tc_can_unify(stmt.whilee.cond.ty,
+                        ast_new_base_type(TYPE_BOOL))) {
+            error("Expected bool in while condition, found other");
+        }
+        tc_block(stmt.whilee.block, ret);
+        sym_pop_frame();
+        return;
+    }
+    if stmt.kind == AST_STMT_RETURN {
+        if (ret.kind == TYPE_KIND_BASE && ret.base == TYPE_VOID &&
+            stmt.returnn.expr != 0) {
+            error("Expected void return");
+        }
+
+        // -1 for non structs
+        stmt.returnn.sret_idx = sym_get_sret_idx();
+
+        if (stmt.returnn.expr != 0) {
+            tc_expr(stmt.returnn.expr);
+            if (!tc_can_unify(stmt.returnn.expr.ty, ret)) {
+                error("must return type X, but returned Y");
+            }
+        }
+        return;
+    }
+    if stmt.kind == AST_STMT_RAW_EXPR {
+        tc_expr(&stmt.raw_expr);
+        return;
+    }
+    if stmt.kind == AST_STMT_BREAK
+    || stmt.kind == AST_STMT_CONTINUE {
+        // nothign to check
+        return;
+    }
+    println(fmt_dec(stmt.kind));
+    error("unhandled statement kind");
+}
+
+fn tc_block(b:*Block, ret:Type) {
+    i:int = 0;
+    while i < b.stmts_len {
+        tc_stmt(&b.stmts[i], ret);
+        i++;
+    }
+}
+
+fn tc_fun(fun:*AST_Def_Fun) {
+    sym_push_frame();
+    if (fun.return_type.kind == TYPE_KIND_STRUCT) {
+        sym_fill_index_if_struct(&fun.return_type);
+        sret_idx:int = sym_add_temporary(ast_new_ptr_type(ast_new_base_type(TYPE_VOID)));
+        sym_set_sret_idx(sret_idx);
+        fun.sret_sym_idx = sret_idx;
+    }
+    i:int = 0;
+    while i < fun.num_args {
+        sym_fill_index_if_struct(&fun.arg_types[i]);
+        fun.arg_sym_idxs[i] = sym_add_svar_arg(
+            fun.arg_types[i], fun.arg_names[i], fun.arg_name_lens[i]);
+        i++;
+    }
+
+    tc_block(&fun.block, fun.return_type);
+    fun.locals_stack_size = sym_current_frame_size();
+
+    b:*Block = &fun.block;
+
+    // insert last "return;" for void functions
+    if fun.return_type.kind == TYPE_KIND_BASE
+    && fun.return_type.base == TYPE_VOID
+    && b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN {
+        ret_stmt:AST_Stmt;
+        ret_stmt.kind = AST_STMT_RETURN;
+        ret_stmt.returnn.expr = 0;
+        if b.stmt_cap <= b.stmts_len {
+            b.stmt_cap++;
+            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
+        }
+        b.stmts[b.stmts_len++] = ret_stmt;
+    }
+
+    // check that some last return exists
+    if b.stmts[b.stmts_len - 1].kind != AST_STMT_RETURN {
+        error("function without return");
+    }
+    sym_pop_frame();
+}
+
+fn tc_def(def:*AST_Def) {
+    if def.kind == AST_DEF_CONST
+    || def.kind == AST_DEF_VAR
+    || def.kind == AST_DEF_TYPE {
+        return;
+    }
+    if def.kind == AST_DEF_FUN {
+        tc_fun(&def.fun);
+        return;
+    }
+    error("unhandled def kind");
+}
+
+fn define_top_level(ast:*AST) {
+    i:int = 0;
+    while i < ast.defs_len {
+        d:*AST_Def = &ast.defs[i];
+        if d.kind == AST_DEF_FUN { sym_add_fun(&d.fun); }
+        if d.kind == AST_DEF_TYPE { sym_add_type(d.stru); }
+        if d.kind == AST_DEF_VAR {
+            tc_expr(d.global.expr);
+            sym_add_global_var(d.global);
+        }
+        if d.kind == AST_DEF_CONST {
+            tc_expr(d.global.expr);
+            sym_add_global_const(d.global);
+        }
+        i++;
+    }
+}
+
+fn type_check(ast:*AST) {
+    sym_init_tables();
+    sym_push_frame();
+    define_top_level(ast);
+    sym_compute_type_sizes();
+    i:int = 0;
+    while i < ast.defs_len {
+        tc_def(&ast.defs[i]);
+        i++;
+    }
+    sym_pop_frame();
+}

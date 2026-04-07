@@ -1,0 +1,627 @@
+fn parse_var(t:Token) AST_Expr {
+    e:AST_Expr;
+    e.kind = AST_EXPR_VAR;
+    e.varr.name = t.text;
+    e.varr.name_len = t.text_len;
+    e.varr.sym_idx = -1;
+    return e;
+}
+
+fn parse_builtin(t:Token) AST_Expr {
+    e:AST_Expr;
+    if streq(t.text, "@syscall", 8) {
+        // just a builtin var and parse the rest as normal expression
+        e.kind = AST_EXPR_BUILTIN;
+        e.builtin = BUILTIN_SYSCALL;
+        return e;
+    }
+    if streq(t.text, "@size", 5) {
+        // just a builtin var and parse the rest as normal expression
+        e.kind = AST_EXPR_BUILTIN;
+        e.builtin = BUILTIN_SIZE;
+
+        t = token_next();
+        if t.type != TOK_LPAREN { error("expected '(' after @size"); }
+
+        t = token_next();
+        e.ty = parse_type(t);
+
+        t = token_next();
+        if t.type != TOK_RPAREN { error("missing ')' after @size"); }
+        return e;
+    }
+    error("unknown builtin");
+    return e;
+}
+
+fn parse_lit_char(t:Token) AST_Expr {
+    e:AST_Expr;
+    e.kind = AST_EXPR_LIT_CHAR;
+    if t.text[1] != '\\' {
+        e.lit_char.value = t.text[1];
+        return e;
+    }
+    
+    if t.text[2] == '\'' { e.lit_char.value = '\''; }
+    if t.text[2] == '\\' { e.lit_char.value = '\\'; }
+    if t.text[2] == 'n'  { e.lit_char.value = '\n'; }
+    if t.text[2] == 't'  { e.lit_char.value = '\t'; }
+    if t.text[2] == 'r'  { e.lit_char.value = '\r'; }
+    if t.text[2] == '0'  { e.lit_char.value = '\0'; }
+
+    return e;
+}
+
+fn parse_lit_string(t:Token) AST_Expr {
+    e:AST_Expr;
+    e.kind = AST_EXPR_LIT_STRING;
+    e.lit_string.text = alloc(t.text_len - 1);
+
+    dest_i:int = 0;
+    i:int = 1;
+    while (i < t.text_len - 1) {
+        c:char = t.text[i];
+        if c != '\\' {
+            e.lit_string.text[dest_i++] = c;
+            i++;
+            continue;
+        }
+        i++;
+        if t.text[i] == 'n' { e.lit_string.text[dest_i++] = '\n'; }
+        if t.text[i] == '"' { e.lit_string.text[dest_i++] = '"'; }
+        if t.text[i] == 't' { e.lit_string.text[dest_i++] = '\t'; }
+        if t.text[i] == 'r' { e.lit_string.text[dest_i++] = '\r'; }
+        if t.text[i] == '0' { e.lit_string.text[dest_i++] = '\0'; }
+        i++;
+    }
+    e.lit_string.text[dest_i] = '\0';
+    return e;
+}
+
+fn parse_lit_bool(t:Token) AST_Expr {
+    e:AST_Expr;
+    e.kind = AST_EXPR_LIT_BOOL;
+    if streq(t.text, "true", 4) {
+        e.lit_bool.value = 1;
+        return e;
+    } 
+    if streq(t.text, "false", 5) {
+        e.lit_bool.value = 0;
+        return e;
+    }
+    error("invalid boolean literal");
+    return e; // unreachable
+}
+
+fn parse_lit_int(t:Token) AST_Expr {
+    e:AST_Expr;
+
+    num:int = 0;
+    i:int = 0;
+    while i < t.text_len {
+        num = num * 10;
+        if t.text[i] == '0' { num=num+0; }
+        if t.text[i] == '1' { num=num+1; }
+        if t.text[i] == '2' { num=num+2; }
+        if t.text[i] == '3' { num=num+3; }
+        if t.text[i] == '4' { num=num+4; }
+        if t.text[i] == '5' { num=num+5; }
+        if t.text[i] == '6' { num=num+6; }
+        if t.text[i] == '7' { num=num+7; }
+        if t.text[i] == '8' { num=num+8; }
+        if t.text[i] == '9' { num=num+9; }
+        i++;
+    }
+    e:AST_Expr;
+    e.kind = AST_EXPR_LIT_INT;
+    e.lit_int.value = num;
+    return e;
+}
+
+fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
+    expr:AST_Expr;
+    expr.kind = AST_EXPR_CALL;
+
+    assert(fun_expr.kind == AST_EXPR_VAR || fun_expr.kind == AST_EXPR_BUILTIN);
+    expr.call.fun_expr = alloc(@size(AST_Expr));
+    *expr.call.fun_expr = fun_expr;
+
+    t = token_next();
+    if t.type != TOK_LPAREN { error("Expected '('"); }
+
+    args_cap:int = 2;
+    expr.call.args = alloc(args_cap * @size(AST_Expr));
+    expr.call.args_len = 0;
+    while true {
+        t = token_next();
+        if t.type == TOK_RPAREN { break; }
+        if t.type == TOK_EOF { error("Expected ')' or expression but found EOF"); }
+        if expr.call.args_len >= args_cap {
+            args_cap = args_cap * 2;
+            expr.call.args = realloc(expr.call.args, args_cap * @size(AST_Expr));
+        }
+
+        expr.call.args[expr.call.args_len++] = parse_expr(t);
+        t = token_next();
+        if t.type == TOK_COMMA { continue; }
+        if t.type == TOK_RPAREN { break; }
+        error("Expected ',' or ')'");
+    }
+    return expr;
+}
+
+fn prefix_prec(ttype:int) int {
+    if ttype == TOK_BANG      { return 20; }
+    if ttype == TOK_TILDE     { return 20; }
+    if ttype == TOK_PLUS      { return 20; }
+    if ttype == TOK_MINUS     { return 20; }
+    if ttype == TOK_AMPERSAND { return 20; }
+    if ttype == TOK_ASTERISK  { return 20; }
+    return 0;
+}
+ 
+fn postfix_prec(ttype:int) int {
+    if ttype == TOK_LPAREN      { return 10; }
+    if ttype == TOK_LSQBR       { return 10; }
+    if ttype == TOK_PLUSPLUS    { return 10; }
+    if ttype == TOK_MINUSMINUS  { return 10; }
+    return 0;
+}
+
+fn infix_prec(ttype:int) int {
+    if ttype == TOK_PERIOD       { return 10; }
+    if ttype == TOK_ASTERISK     { return 40; }
+    if ttype == TOK_SLASH        { return 40; }
+    if ttype == TOK_PERCENT      { return 40; }
+    if ttype == TOK_PLUS         { return 50; }
+    if ttype == TOK_MINUS        { return 50; }
+    if ttype == TOK_SHIFT_LEFT   { return 60; }
+    if ttype == TOK_SHIFT_RIGHT  { return 60; }
+    if ttype == TOK_LT           { return 70; }
+    if ttype == TOK_LTE          { return 70; }
+    if ttype == TOK_GT           { return 70; }
+    if ttype == TOK_GTE          { return 70; }
+    if ttype == TOK_EQUALSEQUALS { return 80; }
+    if ttype == TOK_BANGEQUALS   { return 80; }
+    if ttype == TOK_AMPERSAND    { return 90; }
+    if ttype == TOK_BIT_OR       { return 100; }
+    if ttype == TOK_AND          { return 110; }
+    if ttype == TOK_OR           { return 120; }
+    return 0;
+}
+const MAX_PREC:int = 999;
+
+fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
+    left:AST_Expr;
+
+    left.kind = -1; 
+    if t.type == TOK_LIT_INT { left = parse_lit_int(t); }
+    if t.type == TOK_LIT_BOOL { left = parse_lit_bool(t); }
+    if t.type == TOK_LIT_STRING { left = parse_lit_string(t); }
+    if t.type == TOK_LIT_CHAR { left = parse_lit_char(t); }
+    if t.type == TOK_IDEN { left = parse_var(t); }
+    if t.type == TOK_BUILTIN { left = parse_builtin(t); }
+    if t.type == TOK_LPAREN {
+        t = token_next();
+        left = parse_expr(t);
+        t = token_next();
+        if t.type != TOK_RPAREN { error("Expected ')' :("); }
+    }
+
+    pre_prec:int = prefix_prec(t.type);
+    if left.kind < 0 && pre_prec != 0 {
+        left.kind = AST_EXPR_UNOP;
+        left.unop.op = t.type;
+        t = token_next();
+        left.unop.expr = alloc(@size(AST_Expr));
+        *left.unop.expr = parse_expr_with_prec(t, pre_prec);
+    }
+
+    op:Token;
+    res:AST_Expr = left;
+
+    while true {
+        op = token_peek();
+        // postfix operators:
+        postf_prec:int = postfix_prec(op.type);
+        if postf_prec != 0 {
+            if postf_prec >= prec { break; }
+            
+            if op.type == TOK_LPAREN {
+                res = parse_call(t, left);
+                continue;
+            }
+            new_res:AST_Expr;
+            if op.type == TOK_LSQBR {
+                token_next();
+                t = token_next();
+                new_res.kind = AST_EXPR_BINOP;
+                new_res.binop.left = alloc(@size(AST_Expr));
+                *new_res.binop.left = res;
+                new_res.binop.op = op.type;
+                new_res.binop.right = alloc(@size(AST_Expr));
+                *new_res.binop.right = parse_expr(t);
+                t = token_next();
+                if t.type != TOK_RSQBR { error("Missing closing ']'"); }
+                res = new_res;
+                continue;
+            }
+
+            t = token_next();
+            new_res.kind = AST_EXPR_UNOP;
+            new_res.unop.op = t.type;
+            new_res.unop.expr = alloc(@size(AST_Expr));
+            *new_res.unop.expr = res;
+            res = new_res;
+            continue;
+        }
+
+        // infix operators:
+        inf_prec:int  = infix_prec(op.type);
+        if inf_prec != 0 {
+            if inf_prec >= prec { break; }
+
+            t = token_next();
+            new_res:AST_Expr;
+            new_res.kind = AST_EXPR_BINOP;
+            new_res.binop.left = alloc(@size(AST_Expr));
+            *new_res.binop.left = res;
+            new_res.binop.op = t.type;
+
+            t = token_next();
+            new_res.binop.right = alloc(@size(AST_Expr));
+            *new_res.binop.right = parse_expr_with_prec(t, inf_prec);
+            res = new_res;
+            continue;
+        }
+        break;
+    }
+    return res;
+}
+
+fn parse_expr(t:Token) AST_Expr {
+    return parse_expr_with_prec(t, MAX_PREC);
+}
+
+fn parse_type(t:Token) Type {
+    if t.type == TOK_ASTERISK {
+        t = token_next();
+        return ast_new_ptr_type(parse_type(t));
+    }
+    if t.type == TOK_IDEN {
+        ty:Type;
+        ty.kind = TYPE_KIND_STRUCT;
+        ty.struct_name.name = t.text;
+        ty.struct_name.name_len = t.text_len;
+        ty.struct_name.sym_idx = -1;
+        return ty;
+    }
+
+    bt:int = -1;
+    if t.type == TOK_TY_VOID { bt = TYPE_VOID; }
+    if t.type == TOK_TY_CHAR { bt = TYPE_CHAR; }
+    if t.type == TOK_TY_BOOL { bt = TYPE_BOOL; }
+    if t.type == TOK_TY_INT { bt = TYPE_INT; }
+    if bt < 0 { error("Expected type"); }
+    ty:Type = ast_new_base_type(bt);
+    return ty;
+}
+
+fn parse_stmt_define(t:Token) AST_Stmt {
+    stmt:AST_Stmt;
+    stmt.kind = AST_STMT_DEFINE;
+    stmt.define.var_name = t.text;
+    stmt.define.var_name_len = t.text_len;
+
+    token_next(); // skip the ':' (should already be checked for)
+    t = token_next();
+
+    found_type:bool=false;
+    if t.type == TOK_TY_BOOL
+    || t.type == TOK_TY_INT
+    || t.type == TOK_TY_VOID
+    || t.type == TOK_TY_CHAR
+    || t.type == TOK_ASTERISK
+    || t.type == TOK_IDEN {
+        stmt.define.t = parse_type(t);
+        found_type = true;
+    }
+    if !found_type { error("Expected type after ':'"); }
+
+    t = token_next();
+    if t.type == TOK_SEMICOLON {
+        stmt.define.expr = 0;
+        return stmt;
+    }
+    if t.type != TOK_EQUALS { error("Expected '=' after type in definition"); }
+    t = token_next();
+    stmt.define.expr = alloc(@size(AST_Expr));
+    *stmt.define.expr = parse_expr(t);
+    t = token_next();
+    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    return stmt;
+}
+
+fn parse_stmt_assign_or_raw_expr(t:Token) AST_Stmt {
+    is_builtin:bool = t.type == TOK_BUILTIN;
+    stmt:AST_Stmt;
+    lvalue:AST_Expr = parse_expr(t);
+
+    t = token_next();
+
+    if is_builtin {
+        if t.type != TOK_SEMICOLON { error("expected ';'"); }
+        stmt.kind = AST_STMT_RAW_EXPR;
+        stmt.raw_expr = lvalue;
+        return stmt;
+    }
+
+    if t.type == TOK_SEMICOLON {
+        stmt.kind = AST_STMT_RAW_EXPR;
+        stmt.raw_expr = lvalue;
+        return stmt;
+    }
+
+    if t.type != TOK_EQUALS { error("Expected '=' or ';' after lvalue"); }
+
+    stmt.kind = AST_STMT_ASSIGN;
+    stmt.assign.lvalue = lvalue;
+    t = token_next();
+    stmt.assign.rvalue = parse_expr(t);
+    t = token_next();
+    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    return stmt;
+}
+
+fn parse_stmt_while(t:Token) AST_Stmt {
+    stmt:AST_Stmt;
+    stmt.kind = AST_STMT_WHILE;
+    t = token_next();
+    stmt.whilee.cond = alloc(@size(AST_Expr));
+    *stmt.whilee.cond = parse_expr(t);
+    t = token_next();
+    stmt.whilee.block = alloc(@size(Block));
+    *stmt.whilee.block = parse_block(t);
+    return stmt;
+}
+
+fn parse_stmt_if(t:Token) AST_Stmt {
+    stmt:AST_Stmt;
+    stmt.kind = AST_STMT_IF;
+    t = token_next();
+    stmt.iff.cond = alloc(@size(AST_Expr));
+    *stmt.iff.cond = parse_expr(t);
+    stmt.iff.block = alloc(@size(Block));
+    t = token_next();
+    *stmt.iff.block = parse_block(t);
+    return stmt;
+}
+
+fn parse_stmt_return(t:Token) AST_Stmt {
+    stmt:AST_Stmt;
+    stmt.kind = AST_STMT_RETURN;
+    t = token_next();
+    if t.type == TOK_SEMICOLON {
+        stmt.returnn.expr = 0;
+        return stmt;
+    }
+    stmt.returnn.expr = alloc(@size(AST_Expr));
+    *stmt.returnn.expr = parse_expr(t);
+    t = token_next();
+    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    return stmt;
+}
+
+fn parse_stmt(t:Token) AST_Stmt {
+    s:AST_Stmt;
+    if t.type == TOK_KW_BREAK {
+        t = token_next();
+        if t.type != TOK_SEMICOLON { error("expected semicolon after break"); }
+        s.kind = AST_STMT_BREAK;
+        return s;
+    }
+    if t.type == TOK_KW_CONTINUE {
+        t = token_next();
+        if t.type != TOK_SEMICOLON { error("expected semicolon after continue"); }
+        s.kind = AST_STMT_CONTINUE;
+        return s;
+    }
+    if t.type == TOK_KW_RETURN { return parse_stmt_return(t); }
+    if t.type == TOK_KW_IF { return parse_stmt_if(t); }
+    if t.type == TOK_KW_WHILE { return parse_stmt_while(t); }
+    if t.type == TOK_IDEN {
+        pt:Token = token_peek();
+        if pt.type == TOK_COLON {
+            return parse_stmt_define(t);
+        }
+        return parse_stmt_assign_or_raw_expr(t);
+    }
+    if t.type == TOK_BUILTIN
+    || t.type == TOK_LPAREN
+    || t.type == TOK_ASTERISK {
+        return parse_stmt_assign_or_raw_expr(t);
+    }
+
+    error("invalid statement");
+    return s; // unreachable
+}
+
+fn parse_block(t:Token) Block {
+    if t.type != TOK_LCURLY { error("Blocks should start with '{'"); }
+    b:Block;
+    b.stmts_len = 0;
+    b.stmt_cap = 4;
+    b.stmts = alloc(b.stmt_cap * @size(AST_Stmt));
+    while true {
+        t = token_next();
+        if t.type == TOK_RCURLY { break; }
+        if t.type == TOK_EOF { error("Expected '}' or statement"); }
+        if b.stmts_len >= b.stmt_cap {
+            b.stmt_cap = b.stmt_cap * 2;
+            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
+        }
+        b.stmts[b.stmts_len++] = parse_stmt(t);
+    }
+    return b;
+}
+
+fn parse_def_fun(t:Token) AST_Def {
+    def:AST_Def;
+    def.kind = AST_DEF_FUN;
+
+    fun:*AST_Def_Fun = &def.fun;
+
+    // parse name
+    t = token_next();
+    fun.name = t.text;
+    fun.name_len = t.text_len;
+    t = token_next();
+    if t.type != TOK_LPAREN { error("Expected '('"); }
+
+    // parse args
+    arg_names_cap:int = 2;
+    fun.num_args = 0;
+    fun.arg_names = alloc(arg_names_cap * 8);
+    fun.arg_name_lens = alloc(arg_names_cap * 8);
+    fun.arg_types = alloc(arg_names_cap * @size(Type));
+    fun.arg_sym_idxs = alloc(arg_names_cap * 8);
+
+    while true {
+        t = token_next();
+        if t.type == TOK_RPAREN { break; }
+        if t.type == TOK_EOF { error("Expected ')' or fun arg but reached EOF"); }
+        if t.type != TOK_IDEN { error("Expected Identifier"); }
+        if fun.num_args >= arg_names_cap {
+            arg_names_cap = arg_names_cap*2;
+            fun.arg_names = realloc(fun.arg_names, arg_names_cap * 8);
+            fun.arg_name_lens = realloc(fun.arg_name_lens, arg_names_cap * 8);
+            fun.arg_types = realloc(fun.arg_types, arg_names_cap * @size(Type));
+            fun.arg_sym_idxs = realloc(fun.arg_sym_idxs, arg_names_cap * @size(Type));
+        }
+        fun.arg_names[fun.num_args] = t.text;
+        fun.arg_name_lens[fun.num_args] = t.text_len;
+
+        t = token_next();
+        if t.type != TOK_COLON { error("expected ':'"); }
+
+        t = token_next();
+        ty:Type = parse_type(t);
+        fun.arg_types[fun.num_args++] = ty;
+
+        t = token_next();
+        if t.type == TOK_COMMA { continue; }
+        if t.type == TOK_RPAREN { break; }
+        error("Expected ',' or ')' in function signature");
+    }
+
+    t = token_next();
+    if t.type == TOK_LCURLY {
+        void_t:Type;
+        void_t.kind = TYPE_KIND_BASE;
+        void_t.base = TYPE_VOID;
+        fun.return_type = void_t;
+    }
+    if t.type != TOK_LCURLY {
+        fun.return_type = parse_type(t);
+        t = token_next();
+    }
+
+    fun.block = parse_block(t);
+    return def;
+}
+
+fn parse_def_varconst(t:Token) AST_Def {
+    d:AST_Def;
+    if t.type == TOK_KW_CONST { d.kind = AST_DEF_CONST; }
+    if t.type == TOK_KW_VAR { d.kind = AST_DEF_VAR; }
+
+    t = token_next();
+
+    stmt:AST_Stmt = parse_stmt_define(t);
+    kind:int = stmt.define.expr.kind;
+    if kind != AST_EXPR_LIT_INT
+    && kind != AST_EXPR_LIT_STRING
+    && kind != AST_EXPR_LIT_CHAR
+    && kind != AST_EXPR_LIT_BOOL {
+        error("consts can't be anything other than literals");
+    }
+    d.global = stmt.define;
+    // render_define(d.global);
+    return d;
+}
+
+fn parse_def_struct(t:Token) AST_Def {
+    def:AST_Def;
+    def.kind = AST_DEF_TYPE;
+    t = token_next();
+    if t.type != TOK_IDEN { error("Expected identifier after 'struct'"); }
+    def.stru.name = t.text;
+    def.stru.name_len = t.text_len;
+    t = token_next();
+    if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
+
+    cap:int = 2;
+    def.stru.field_names = alloc(cap * 8);
+    def.stru.field_name_lens = alloc(cap * 8);
+    def.stru.types = alloc(cap * @size(Type));
+
+    n_args:int  = 0;
+    while (true) {
+        if n_args >= cap {
+            cap = cap * 2;
+            def.stru.field_names = realloc(def.stru.field_names, cap*@size(*char));
+            def.stru.field_name_lens = realloc(def.stru.field_name_lens, cap*@size(int));
+            def.stru.types = realloc(def.stru.types, cap * @size(Type));
+        }
+        t = token_next();
+        if t.type == TOK_RCURLY { break; }
+        if t.type != TOK_IDEN { error("Expected identifier in struct definition"); }
+        def.stru.field_names[n_args] = t.text;
+        def.stru.field_name_lens[n_args] = t.text_len;
+
+        t = token_next();
+        if t.type != TOK_COLON { 
+            write(def.stru.name, def.stru.name_len);
+            println(fmt_dec(t.type));
+            error("Expected ':' after identifier in struct definition"); 
+        }
+        t = token_next();
+        def.stru.types[n_args] = parse_type(t);
+        t = token_next();
+        if t.type != TOK_SEMICOLON { error("Expected ';' after type in struct definition"); }
+        n_args++;
+    }
+
+    def.stru.n_fields = n_args;
+    return def;
+}
+
+fn parse_def(t:Token) AST_Def {
+    if t.type == TOK_KW_CONST || t.type == TOK_KW_VAR {
+        return parse_def_varconst(t);
+    }
+    if t.type == TOK_KW_STRUCT { return parse_def_struct(t); }
+    if t.type == TOK_KW_FN { return parse_def_fun(t); }
+  
+    error("Expected function definition starting with fn");
+    d:AST_Def; // unreachable
+    return d;
+}
+
+fn parse() AST{
+    ast:AST;
+    cap:int = 2;
+    ast.defs = alloc(cap * @size(AST_Def));
+    ast.defs_len = 0;
+    t:Token;
+    while true {
+        t = token_next();
+        if t.type == TOK_EOF { break; }
+        if ast.defs_len >= cap { 
+            cap = cap * 2;
+            ast.defs = realloc(ast.defs, cap * @size(AST_Def));
+        }
+        ast.defs[ast.defs_len++] = parse_def(t);
+    }
+    return ast;
+}

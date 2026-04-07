@@ -1,0 +1,6 @@
+fn main() int {
+    i:int = 42;
+    ip:*int = &i;
+    (*ip)++;
+    return i;
+}

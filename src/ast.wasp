@@ -1,0 +1,218 @@
+///// TYPES ////////////////////////
+
+const TYPE_VOID:int = 1;
+const TYPE_BOOL:int = 2;
+const TYPE_INT:int  = 3;
+const TYPE_CHAR:int = 4;
+
+const TYPE_KIND_BASE:int   = 1;
+const TYPE_KIND_PTR:int    = 2;
+const TYPE_KIND_STRUCT:int = 3;
+
+struct TypeStructDef {
+    name:*char;
+    name_len:int;
+    field_names:**char;
+    field_name_lens:*int;
+    types:*Type;
+    n_fields:int;
+    sizeb:int;
+}
+
+struct TypeStructName {
+    name:*char;
+    name_len:int;
+    sym_idx:int;
+}
+
+struct Type {
+    kind:int;
+    base:int;
+    ptr:*Type;
+    struct_name:TypeStructName;
+}
+
+///// EXPRESSIONS //////////////////
+
+const AST_EXPR_LIT_BOOL:int   = 0;
+const AST_EXPR_LIT_CHAR:int   = 1;
+const AST_EXPR_LIT_INT:int    = 2;
+const AST_EXPR_LIT_STRING:int = 3;
+const AST_EXPR_VAR:int        = 4;
+const AST_EXPR_BINOP:int      = 5;
+const AST_EXPR_UNOP:int       = 6;
+const AST_EXPR_CALL:int       = 7;
+const AST_EXPR_BUILTIN:int    = 8;
+
+const BUILTIN_SYSCALL:int = 0;
+const BUILTIN_SIZE:int    = 1;
+
+struct AST_Expr_Var {
+    name:*char;
+    name_len:int;
+    sym_idx:int;
+}
+
+struct AST_Expr_Lit_Int {
+    value:int;
+}
+
+struct AST_Expr_Lit_Bool {
+    value:int;
+}
+
+struct AST_Expr_Lit_String {
+    text:*char;
+}
+
+struct AST_Expr_Lit_Char {
+    value:char;
+}
+
+struct AST_Expr_Binop {
+    op:int;
+    left:*AST_Expr;
+    right:*AST_Expr;
+    offsetb:int;
+}
+
+struct AST_Expr_Unop {
+    op:int;
+    expr:*AST_Expr;
+}
+
+struct AST_Expr_Call {
+    fun_expr:*AST_Expr;
+    args:*AST_Expr;
+    args_len:int;
+    temporary_sym_idxs:*int;
+    temporary_sret_sym_idx:int;
+}
+
+struct AST_Expr_Builtin {
+    name:*char;
+    name_len:int;
+}
+
+struct AST_Expr {
+    kind:int;
+    varr:AST_Expr_Var;
+    lit_int:AST_Expr_Lit_Int;
+    lit_bool:AST_Expr_Lit_Bool;
+    lit_string:AST_Expr_Lit_String;
+    lit_char:AST_Expr_Lit_Char;
+    binop:AST_Expr_Binop;
+    unop:AST_Expr_Unop;
+    call:AST_Expr_Call;
+    builtin:int;
+    ty:Type;
+}
+
+///// STATEMENTS ///////////////////
+
+const AST_STMT_DEFINE:int   = 0;
+const AST_STMT_ASSIGN:int   = 1;
+const AST_STMT_IF:int       = 2;
+const AST_STMT_WHILE:int    = 3;
+const AST_STMT_RETURN:int   = 4;
+const AST_STMT_RAW_EXPR:int = 5;
+const AST_STMT_BREAK:int    = 6;
+const AST_STMT_CONTINUE:int = 7;
+
+struct Block {
+    stmts:*AST_Stmt;
+    stmts_len:int;
+    stmt_cap:int;
+}
+
+struct AST_Stmt_Assign {
+    lvalue:AST_Expr;
+    rvalue:AST_Expr;
+    sym_idx:int;
+    t:Type;
+}
+
+struct AST_Stmt_Declare {
+    var_name:*char;
+    var_name_len:int;
+    t:Type;
+    expr:*AST_Expr;
+    sym_idx:int;
+}
+
+struct AST_Stmt_If {
+    cond:*AST_Expr;
+    block:*Block;
+}
+
+struct AST_Stmt_While {
+    cond:*AST_Expr;
+    block:*Block;
+}
+
+struct AST_Stmt_Return {
+    expr:*AST_Expr;
+    sret_idx:int;
+}
+
+struct AST_Stmt {
+    kind:int;
+    assign:AST_Stmt_Assign;
+    define:AST_Stmt_Declare;
+    iff:AST_Stmt_If;
+    whilee:AST_Stmt_While;
+    returnn:AST_Stmt_Return;
+    raw_expr:AST_Expr;
+}
+
+///// DEFINITIONS //////////////////
+
+const AST_DEF_FUN:int   = 0;
+const AST_DEF_CONST:int = 1;
+const AST_DEF_VAR:int   = 2;
+const AST_DEF_TYPE:int  = 3;
+
+struct AST_Def_Fun {
+    name:*char;
+    name_len:int;
+    num_args:int;
+    arg_names:**char;
+    arg_name_lens:*int;
+    arg_types:*Type;
+    return_type:Type;
+    block:Block;
+    arg_sym_idxs:*int;
+    locals_stack_size:int;
+    sret_sym_idx:int;
+}
+
+struct AST_Def {
+    kind:int;
+    fun:AST_Def_Fun;
+    global:AST_Stmt_Declare;
+    stru:TypeStructDef;
+}
+
+///// AST //////////////////////////
+
+struct AST {
+  defs:*AST_Def;
+  defs_len:int;
+}
+
+///// AST UTILS ////////////////////
+
+fn ast_new_base_type(bt:int) Type {
+    t:Type;
+    t.kind = TYPE_KIND_BASE;
+    t.base = bt;
+    return t;
+}
+
+fn ast_new_ptr_type(inner_t:Type) Type {
+    t:Type;
+    t.kind = TYPE_KIND_PTR;
+    t.ptr = alloc(@size(Type));
+    *t.ptr = inner_t;
+    return t;
+}

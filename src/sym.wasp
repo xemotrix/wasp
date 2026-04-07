@@ -1,0 +1,356 @@
+const SYM_KIND_STACK:int     = 1;
+const SYM_KIND_STACK_ARG:int = 2;
+const SYM_KIND_CONST:int     = 3;
+const SYM_KIND_VAR:int       = 4;
+const SYM_KIND_FUN:int       = 5;
+
+struct Symbol {
+    t:Type;
+    sizeb:int;
+    kind:int;
+    offset:int;
+    def:AST_Stmt_Declare;
+    fun:*AST_Def_Fun;
+}
+
+struct SymT {
+  symbols:*Symbol;
+  len:int;
+  cap:int;
+}
+
+struct SSSEntry {
+  name:*char;
+  name_len:int;
+  sym_idx:int;
+}
+
+struct SSSFrame {
+  entries:*SSSEntry;
+  sizeb:int;
+  len:int;
+  cap:int;
+  sret_offset:int;
+}
+
+struct ScopedSymbolStack {
+  frames:*SSSFrame;
+  len:int;
+  cap:int;
+}
+
+struct TypeTable {
+  structs:*TypeStructDef;
+  len:int;
+  cap:int;
+}
+
+fn to_stack_size(size:int) int {
+  // rounds up to multiples of 8
+  return (size + 7) & ~7;
+}
+
+var TT:*TypeTable = 0;
+var ST:*SymT = 0;
+var SSS:*ScopedSymbolStack = 0;
+
+fn size_of_type(t:Type) int {
+    if t.kind == TYPE_KIND_STRUCT {
+        sym_fill_index_if_struct(&t);
+        if t.struct_name.sym_idx >= TT.len { error("struct idx out of range"); }
+        return TT.structs[t.struct_name.sym_idx].sizeb;
+    }
+    if t.kind == TYPE_KIND_PTR { return 8; }
+    if t.kind == TYPE_KIND_BASE {
+        if t.base == TYPE_CHAR { return 1; }
+        if t.base == TYPE_BOOL { return 1; }
+        if t.base == TYPE_INT  { return 8; }
+        if t.base == TYPE_VOID { error("void has no size"); }
+    }
+    error("UNIMPLEMENTED: type kind size");
+    return 0;//unreachable
+}
+
+fn sym_add_type(ts:TypeStructDef) {
+    if TT.len >= TT.cap {
+        TT.cap = TT.cap * 2;
+        TT.structs = realloc(TT.structs, TT.cap * @size(TypeStructDef));
+    }
+    ts.sizeb = -1; // mark it as unknown for now
+    TT.structs[TT.len++] = ts;
+}
+
+fn sym_search_type_idx(idx:int) TypeStructDef {
+    return TT.structs[idx]; 
+}
+
+fn sym_search_type(name:*char, name_len:int) int {
+    i:int = 0;
+    while i < TT.len {
+        t:TypeStructDef = TT.structs[i];
+        if t.name_len == name_len && streq(name, t.name, name_len) {
+            return i;
+        }
+        i++;
+    }
+    error("couldn't find type");
+    return 0;//unreachable
+}
+
+fn sym_compute_type_sizes() {
+    n_finished:int = 0;
+    last_round_total_finished:int = 0;
+    while n_finished != TT.len {
+        t_i:int = 0;
+        while (t_i < TT.len) {
+            if TT.structs[t_i].sizeb != -1 { continue; }
+            size_accum:int = 0;
+            fields_finished:int = 0;
+            f_i:int = 0;
+            while f_i < TT.structs[t_i].n_fields {
+                t:Type = TT.structs[t_i].types[f_i];
+                st:TypeStructDef;
+                if t.kind == TYPE_KIND_PTR {
+                    size_accum = size_accum+8;
+                    fields_finished++;
+                }
+                if t.kind == TYPE_KIND_BASE {
+                    if t.base == TYPE_VOID { error("can't compute the size of void"); }
+                    if t.base == TYPE_BOOL { size_accum++; }
+                    if t.base == TYPE_INT { size_accum = size_accum+8; }
+                    if t.base == TYPE_CHAR { size_accum++; }
+                    fields_finished++;
+                }
+                if t.kind == TYPE_KIND_STRUCT {
+                    st = sym_search_type_idx(sym_search_type(
+                        t.struct_name.name, t.struct_name.name_len));
+                    if st.sizeb == -1 { f_i++; continue; }
+                    size_accum = size_accum+st.sizeb;
+                    fields_finished++;
+                }
+                f_i++;
+            }
+
+            if fields_finished == TT.structs[t_i].n_fields {
+                sizeb:int = (size_accum + 7) & ~7;
+                n_finished++;
+                TT.structs[t_i].sizeb = sizeb;
+            }
+            t_i++;
+        }
+        if last_round_total_finished == n_finished {
+            error("couldn't resolve type sizes, maybe you have recursive definitions?");
+        }
+        last_round_total_finished = n_finished;
+    }
+    println("Success computing type sizes");
+}
+
+fn sym_push_frame() {
+    if SSS.len >= SSS.cap {
+        SSS.cap = SSS.cap*2;
+        SSS.frames = realloc(SSS.frames, SSS.cap * @size(SSSFrame));
+    }
+    new_frame:*SSSFrame = &SSS.frames[SSS.len++];
+    new_frame.cap = 16;
+    new_frame.len = 0;
+    new_frame.sret_offset = -1;
+    if SSS.len == 1 {
+        new_frame.sizeb = 0;
+    }
+    if SSS.len != 1 {
+        new_frame.sizeb = SSS.frames[SSS.len - 2].sizeb;
+    }
+    new_frame.entries = alloc(new_frame.cap * @size(SSSEntry));
+}
+
+fn sym_pop_frame() {
+    if SSS.len == 0 { error("can't pop from empty ScopedSymbolStack\n"); }
+    SSS.len = SSS.len-1;
+}
+
+fn sym_init_tables() {
+    ST = alloc(@size(SymT));
+    ST.cap = 32;
+    ST.len = 0;
+    ST.symbols = alloc(ST.cap * @size(Symbol));
+
+    TT = alloc(@size(TypeTable));
+    TT.cap = 32;
+    TT.len = 0;
+    TT.structs = alloc(TT.cap * @size(TypeStructDef));
+
+    SSS = alloc(@size(ScopedSymbolStack));
+    SSS.cap = 32;
+    SSS.len = 0;
+    SSS.frames = alloc(SSS.cap * @size(SSSFrame));
+}
+
+fn new_sym() *Symbol {
+    if ST.len >= ST.cap {
+        ST.cap = ST.cap*2;
+        ST.symbols = realloc(ST.symbols, ST.cap * @size(Symbol));
+    }
+    sym:*Symbol = &ST.symbols[ST.len++];
+    return sym;
+}
+
+fn current_frame() *SSSFrame { 
+    return &SSS.frames[SSS.len - 1]; 
+}
+
+fn current_function_frame() *SSSFrame {
+    assert(SSS.len > 1);
+    return &SSS.frames[1];
+}
+
+fn sym_get_sret_idx() int { 
+    f:*SSSFrame = current_function_frame();
+    return f.sret_offset; 
+}
+
+fn sym_set_sret_idx(sret:int) {
+    f:*SSSFrame = current_function_frame();
+    f.sret_offset = sret;
+}
+
+fn new_entry() *SSSEntry {
+    f:*SSSFrame = current_frame();
+    if f.len >= f.cap {
+        f.cap = f.cap*2;
+        f.entries = realloc(f.entries, f.cap * @size(SSSEntry));
+    }
+    e:*SSSEntry = &f.entries[f.len++];
+    return e;
+}
+
+fn sym_fill_index_if_struct(t:*Type) {
+    if t.kind == TYPE_KIND_BASE { return; }
+    if t.kind ==  TYPE_KIND_STRUCT {
+        t.struct_name.sym_idx = sym_search_type(t.struct_name.name, 
+                                                t.struct_name.name_len);
+        return;
+    }
+    if t.kind == TYPE_KIND_PTR {
+        sym_fill_index_if_struct(t.ptr);
+        return;
+    }
+}
+
+fn sym_add_varconst(def:AST_Stmt_Declare, kind:int) int {
+    idx:int = ST.len;
+    sym:*Symbol = new_sym();
+    sym_fill_index_if_struct(&def.t);
+    sym.t = def.t;
+    sym.kind = kind;
+    sym.def = def;
+    sym.sizeb = size_of_type(def.t);
+
+    assert(SSS.len == 1);
+    e:*SSSEntry = new_entry();
+    e.name = def.var_name;
+    e.name_len = def.var_name_len;
+    e.sym_idx = idx;
+
+    return idx;
+}
+
+fn sym_add_global_var(def:AST_Stmt_Declare) int {
+    return sym_add_varconst(def, SYM_KIND_VAR);
+}
+
+fn sym_add_global_const(def:AST_Stmt_Declare) int {
+    return sym_add_varconst(def, SYM_KIND_CONST);
+}
+
+fn sym_add_fun(fun:*AST_Def_Fun) int {
+    idx:int = ST.len;
+    sym:*Symbol = new_sym();
+    sym.kind = SYM_KIND_FUN;
+    sym.fun = fun;
+
+    e:*SSSEntry = new_entry();
+    e.name = fun.name;
+    e.name_len = fun.name_len;
+    e.sym_idx = idx;
+    return idx;
+}
+
+fn sym_current_frame_size() int { 
+    f:*SSSFrame = current_frame();
+    return f.sizeb; 
+}
+
+fn sym_create_sym(t:Type, kind:int) int {
+    idx:int = ST.len;
+    sym:*Symbol = new_sym();
+    sym_fill_index_if_struct(&t);
+    sym.t = t;
+    sym.kind = kind;
+    sym.sizeb = size_of_type(t);
+
+    assert(SSS.len > 1);
+    ff:*SSSFrame = current_function_frame();
+    ff.sizeb = ff.sizeb+to_stack_size(sym.sizeb);
+    sym.offset = ff.sizeb;
+    return idx;
+}
+
+fn sym_add_temporary(t:Type) int { 
+    return sym_create_sym(t, SYM_KIND_STACK); 
+}
+
+fn sym_add_svar_arg(t:Type, name:*char, name_len:int) int {
+    idx:int = ST.len;
+    sym:*Symbol = new_sym();
+    sym_fill_index_if_struct(&t);
+    sym.t = t;
+    sym.kind = SYM_KIND_STACK_ARG;
+    sym.sizeb = 8; // arguments are always allocated as 8 bytes
+    
+    assert(SSS.len > 1);
+    ff:*SSSFrame = current_function_frame();
+    ff.sizeb = ff.sizeb+to_stack_size(sym.sizeb);
+    sym.offset = ff.sizeb;
+    
+    e:*SSSEntry = new_entry();
+    e.name = name;
+    e.name_len = name_len;
+    e.sym_idx = idx;
+    return idx;
+}
+
+fn sym_add_svar(t:Type, name:*char, name_len:int) int {
+    idx:int = sym_create_sym(t, SYM_KIND_STACK);
+    e:*SSSEntry = new_entry();
+    e.name = name;
+    e.name_len = name_len;
+    e.sym_idx = idx;
+    return idx;
+}
+
+fn sym_search(idx:int) *Symbol { 
+    return &ST.symbols[idx]; 
+}
+
+fn sym_stack_search(name:*char, name_len:int) int {
+    i:int = SSS.len - 1;
+    while i >= 0 {
+        f:SSSFrame = SSS.frames[i];
+        j:int = f.len -1;
+        while j >= 0 {
+            if name_len == f.entries[j].name_len
+            && streq(name, f.entries[j].name, name_len) {
+                return f.entries[j].sym_idx;
+            }
+            j=j-1;
+        }
+        i=i-1;
+    }
+    write(name, name_len);
+    println("");
+    error("Couldn't find symbol");
+    return 0;//unreachable
+}
+
+fn sym_all() *SymT { return ST; }
