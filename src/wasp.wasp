@@ -24,9 +24,7 @@ const STDOUT:int = 1;
 
 fn strlen(str:*char) int {
     i:int = 0;
-    while str[i] != '\0' {
-        i = i+1;
-    }
+    while str[i] != '\0' { i++; }
     return i;
 }
 
@@ -55,10 +53,8 @@ fn exit(code:int) {
 fn strncmp(a:*char, b:*char, len:int) bool {
     i:int = 0;
     while i < len {
-        if a[i] != b[i] {
-            return false;
-        }
-        i=i+1;
+        if a[i] != b[i] { return false; }
+        i++;
     }
     return true;
 }
@@ -91,7 +87,7 @@ fn realloc(old_ptr:*int, new_size:int) int {
     while (offset < old_size) {
         new_ptr[i] = old_ptr[i];
         offset=offset+8;
-        i=i+1;
+        i++;
     }
     return new_ptr;
 }
@@ -135,7 +131,7 @@ fn read_file(filename:*char) *char {
             println("there is NO more to read!");
             break;
         }
-        chunk_c = chunk_c + 1;
+        chunk_c++;
     }
     return buf;
 }
@@ -144,9 +140,8 @@ fn fmt_dec(num:int) *char {
     out:*char = alloc(20);
     idx:int = 0;
     if num < 0 {
-        out[idx] = '-';
+        out[idx++] = '-';
         num = -num;
-        idx=idx+1;
     }
     if num == 0 {
         out[0] = '0';
@@ -165,16 +160,14 @@ fn fmt_dec(num:int) *char {
         if mod == 7 { out[idx] = '7'; }
         if mod == 8 { out[idx] = '8'; }
         if mod == 9 { out[idx] = '9'; }
-        idx = idx+1;
+        idx++;
         num = num / 10;
     }
     end:int = idx-1;
     while start < end {
         aux:char = out[start];
-        out[start] = out[end];
-        out[end] = aux;
-        start=start+1;
-        end=end-1;
+        out[start++] = out[end];
+        out[end--] = aux;
     }
     return out;
 }
@@ -191,7 +184,7 @@ fn fmt_hex(num:int) *char {
         shift = (15-i) * 4;
         idx = (num>>shift)&15;
         out[i+2] = hex[idx];
-        i=i+1;
+        i++;
     }
     out[16+3] = '\0';
     return out;
@@ -203,30 +196,18 @@ fn strcat(a:*char, b:*char) *char {
     new:*char = alloc(lena+lenb);
     ptr:*char = new;
     i:int = 0;
-    while i < lena {
-        *ptr = a[i];
-        ptr=ptr+1;
-        i=i+1;
-    }
+    while i < lena { *(ptr++) = a[i++]; }
     i = 0;
-    while i < lenb {
-        *ptr = b[i];
-        ptr=ptr+1;
-        i=i+1;
-    }
+    while i < lenb { *(ptr++) = b[i++]; }
     return new;
 }
 
 fn streq(a:*char, b:*char, len:int) bool {
     i:int = 0;
     while i < len {
-        if a[i] == '\0' || b[i] == '\0' {
-            return false;
-        }
-        if a[i] != b[i] {
-            return false;
-        }
-        i=i+1;
+        if a[i] == '\0' || b[i] == '\0' { return false; }
+        if a[i] != b[i] { return false; }
+        i++;
     }
     return true;
 } 
@@ -323,7 +304,7 @@ fn peek_token(src:*char) Token {
     ref:*char = 0;
     while ref != src {
         ref = src;
-        while is_whitespace(*src) { src = src+1; }
+        while is_whitespace(*src) { src++; }
         src = src + len_skip_comments(src);
     }
 
@@ -361,63 +342,63 @@ fn peek_token(src:*char) Token {
         t.type = TOK_PLUS; 
         if src[1] != '\0' && src[1] == '+' {
             t.type = TOK_PLUSPLUS;
-            t.text_len = t.text_len+1;
+            t.text_len++;
         }
     }
     if *src == '-' {
         t.type = TOK_MINUS; 
         if src[1] != '\0' && src[1] == '-' {
             t.type = TOK_MINUSMINUS;
-            t.text_len = t.text_len+1;
+            t.text_len++;
         }
     }
     if *src == '!' {
         t.type = TOK_BANG;
         if src[1] != '\0' && src[1] == '=' {
             t.type = TOK_BANGEQUALS;
-            t.text_len = t.text_len+1;
+            t.text_len++;
         }
     }
     if *src == '|' {
         t.type = TOK_BIT_OR;
         if src[1] != '\0' && src[1] == '|' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_OR;
         }
     }
     if *src == '&' {
         t.type = TOK_AMPERSAND;
         if src[1] != '\0' && src[1] == '&' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_AND;
         }
     }
     if *src == '<' {
         t.type = TOK_LT;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_LTE;
         }
         if src[1] != '\0' && src[1] == '<' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_SHIFT_LEFT;
         }
     }
     if *src == '>' {
         t.type = TOK_GT;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_GTE;
         }
         if src[1] != '\0' && src[1] == '>' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_SHIFT_RIGHT;
         }
     }
     if *src == '=' {
         t.type = TOK_EQUALS;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             t.type = TOK_EQUALSEQUALS;
         }
     }
@@ -430,7 +411,7 @@ fn peek_token(src:*char) Token {
 fn lex_iden(src:*char) Token {
     c:int = 1;
     while is_alpha(src[c]) || is_digit(src[c]) || src[c] == '_' {
-        c = c+1;
+        c++;
     }
 
     t:Token;
@@ -479,17 +460,17 @@ fn lex_string(src:*char) Token {
     t.text = src;
     t.type = TOK_LIT_STRING;
     while true {
-        t.text_len = t.text_len+1;
+        t.text_len++;
         if src[t.text_len] == '\0' { error("unfinished string literal"); }
         if src[t.text_len] == '\\' 
         && src[t.text_len + 1] != '\0' 
         && src[t.text_len + 1] == '"' {
-            t.text_len=t.text_len+1;
+            t.text_len++;
             continue;
         }
         if src[t.text_len] == '"' { break; }
     }
-    t.text_len = t.text_len+1;
+    t.text_len++;
     return t;
 }
 
@@ -503,7 +484,7 @@ fn lex_char(src: *char) Token {
         if src[2] == 'n' || src[2] == 'r'
         || src[2] == 't' || src[2] == '\\'
         || src[2] == '0' || src[2] == '\'' {
-            t.text_len = t.text_len+1;
+            t.text_len++;
             valid_escape = true;
         }
         if !valid_escape { error("unrecognized scaped character"); }
@@ -513,13 +494,13 @@ fn lex_char(src: *char) Token {
         error("expected closing '");
     }
 
-    t.text_len = t.text_len+1;
+    t.text_len++;
     return t;
 }
 
 fn lex_num(src: *char) Token {
     len:int = 0;
-    while is_digit(src[len]) { len = len+1; }
+    while is_digit(src[len]) { len++; }
 
     t:Token;
     t.type = TOK_LIT_INT;
@@ -535,7 +516,7 @@ fn len_skip_comments(src:*char) int {
     i:int = 2;
     while true {
         if src[i] == '\n' || src[i] == '\0' { break; }
-        i=i+1;
+        i++;
     }
     return i;
 }
@@ -545,7 +526,7 @@ fn lex_token(src:**char) Token {
     while ref != *src {
         ref = *src;
         while is_whitespace(**src) {
-            *src = *src + 1;
+            (*src)++;
         }
         *src = *src + len_skip_comments(*src);
     }
@@ -845,19 +826,17 @@ fn parse_lit_string(t:Token) AST_Expr {
     while (i < t.text_len - 1) {
         c:char = t.text[i];
         if c != '\\' {
-            e.lit_string.text[dest_i] = c;
-            dest_i = dest_i + 1;
-            i = i+1;
+            e.lit_string.text[dest_i++] = c;
+            i++;
             continue;
         }
-        i = i+1;
-        if t.text[i] == 'n' { e.lit_string.text[dest_i] = '\n'; }
-        if t.text[i] == '"' { e.lit_string.text[dest_i] = '"'; }
-        if t.text[i] == 't' { e.lit_string.text[dest_i] = '\t'; }
-        if t.text[i] == 'r' { e.lit_string.text[dest_i] = '\r'; }
-        if t.text[i] == '0' { e.lit_string.text[dest_i] = '\0'; }
-        dest_i = dest_i+1;
-        i=i+1;
+        i++;
+        if t.text[i] == 'n' { e.lit_string.text[dest_i++] = '\n'; }
+        if t.text[i] == '"' { e.lit_string.text[dest_i++] = '"'; }
+        if t.text[i] == 't' { e.lit_string.text[dest_i++] = '\t'; }
+        if t.text[i] == 'r' { e.lit_string.text[dest_i++] = '\r'; }
+        if t.text[i] == '0' { e.lit_string.text[dest_i++] = '\0'; }
+        i++;
     }
     e.lit_string.text[dest_i] = '\0';
     return e;
@@ -895,7 +874,7 @@ fn parse_lit_int(t:Token) AST_Expr {
         if t.text[i] == '7' { num=num+7; }
         if t.text[i] == '8' { num=num+8; }
         if t.text[i] == '9' { num=num+9; }
-        i=i+1;
+        i++;
     }
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_INT;
@@ -926,8 +905,7 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
             expr.call.args = realloc(expr.call.args, args_cap * @size(AST_Expr));
         }
 
-        expr.call.args[expr.call.args_len] = parse_expr(src, t);
-        expr.call.args_len = expr.call.args_len+1;
+        expr.call.args[expr.call.args_len++] = parse_expr(src, t);
         t = lex_token(src);
         if t.type == TOK_COMMA { continue; }
         if t.type == TOK_RPAREN { break; }
@@ -1221,10 +1199,11 @@ fn parse_stmt(src:**char, t:Token) AST_Stmt {
         }
         return parse_stmt_assign_or_raw_expr(src, t);
     }
-    if t.type == TOK_BUILTIN {
+    if t.type == TOK_BUILTIN
+    || t.type == TOK_LPAREN
+    || t.type == TOK_ASTERISK {
         return parse_stmt_assign_or_raw_expr(src, t);
     }
-    if t.type == TOK_ASTERISK { return parse_stmt_assign_or_raw_expr(src, t); }
 
     error("invalid statement");
     return s; // unreachable
@@ -1244,8 +1223,7 @@ fn parse_block(src:**char, t:Token) Block {
             b.stmt_cap = b.stmt_cap * 2;
             b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
-        b.stmts[b.stmts_len] = parse_stmt(src, t);
-        b.stmts_len = b.stmts_len+1;
+        b.stmts[b.stmts_len++] = parse_stmt(src, t);
     }
     return b;
 }
@@ -1291,8 +1269,7 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
 
         t = lex_token(src);
         ty:Type = parse_type(src, t);
-        fun.arg_types[fun.num_args] = ty;
-        fun.num_args = fun.num_args + 1;
+        fun.arg_types[fun.num_args++] = ty;
 
         t = lex_token(src);
         if t.type == TOK_COMMA { continue; }
@@ -1371,7 +1348,7 @@ fn parse_def_struct(src:**char, t:Token) AST_Def {
         def.stru.types[n_args] = parse_type(src, t);
         t = lex_token(src);
         if t.type != TOK_SEMICOLON { error("Expected ';' after type in struct definition"); }
-        n_args = n_args + 1;
+        n_args++;
     }
 
     def.stru.n_fields = n_args;
@@ -1403,8 +1380,7 @@ fn parse(src:**char) AST{
             cap = cap * 2;
             ast.defs = realloc(ast.defs, cap * @size(AST_Def));
         }
-        ast.defs[ast.defs_len] = parse_def(src, t);
-        ast.defs_len = ast.defs_len+1;
+        ast.defs[ast.defs_len++] = parse_def(src, t);
     }
     return ast;
 }
@@ -1419,7 +1395,7 @@ fn ind() {
     println("");
     while i < IND {
         print("  ");
-        i=i+1;
+        i++;
     }
 }
 
@@ -1492,14 +1468,13 @@ fn render_expr_var(v:AST_Expr_Var) {
 
 fn render_expr_call(c:AST_Expr_Call) {
     print("(CALL");
-    IND=IND+1;
+    IND++;
     render_expr(*c.fun_expr);
     i:int = 0;
     while i < c.args_len {
-        render_expr(c.args[i]);
-        i=i+1;
+        render_expr(c.args[i++]);
     }
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1507,9 +1482,9 @@ fn render_unop(u:AST_Expr_Unop) {
     ind();
     print("(UNOP ");
     render_op(u.op);
-    IND=IND+1;
+    IND++;
     render_expr(*u.expr);
-    IND=IND-1;
+    IND--;
     print("')");
 }
 
@@ -1541,17 +1516,17 @@ fn render_binop(b:AST_Expr_Binop) {
     ind();
     print("(BINOP ");
     render_op(b.op);
-    IND=IND+1;
+    IND++;
     render_expr(*b.left);
     render_expr(*b.right);
-    IND=IND-1;
+    IND--;
     print("')");
 }
 
 fn render_expr(e:AST_Expr) {
     ind();
     print("(EXPR ");
-    IND=IND+1;
+    IND++;
     should_render_type:bool = true;
     if e.kind == AST_EXPR_VAR
     && e.varr.sym_idx == -1 {
@@ -1568,7 +1543,7 @@ fn render_expr(e:AST_Expr) {
     if e.kind == AST_EXPR_BINOP      { render_binop(e.binop); }
     if e.kind == AST_EXPR_UNOP       { render_unop(e.unop); }
     if e.kind == AST_EXPR_CALL       { render_expr_call(e.call); }
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1577,10 +1552,10 @@ fn render_const_def(d:AST_Stmt_Declare) {
     print("(CONST '");
     write(d.var_name, d.var_name_len);
     print("'");
-    IND=IND+1;
+    IND++;
     render_type(d.t);
     render_expr(*d.expr);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1589,10 +1564,10 @@ fn render_var_def(d:AST_Stmt_Declare) {
     print("(VAR '");
     write(d.var_name, d.var_name_len);
     print("'");
-    IND=IND+1;
+    IND++;
     render_type(d.t);
     render_expr(*d.expr);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1601,7 +1576,7 @@ fn render_define(d:AST_Stmt_Declare) {
     print("(DEFINE '");
     write(d.var_name, d.var_name_len);
     print("'");
-    IND=IND+1;
+    IND++;
     render_type(d.t);
     if (d.expr != 0) {
         render_expr(*d.expr);
@@ -1610,40 +1585,40 @@ fn render_define(d:AST_Stmt_Declare) {
         ind();
         print("(NOEXPR)");
     }
-    IND=IND-1;
+    IND--;
     print(")");
 }
 fn render_assign(a:AST_Stmt_Assign) {
     ind();
     print("(ASSIGN ");
-    IND=IND+1;
+    IND++;
     render_expr(a.lvalue);
     render_expr(a.rvalue);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 fn render_if(i:AST_Stmt_If) {
     ind();
     print("(IF ");
-    IND=IND+1;
+    IND++;
     render_expr(*i.cond);
     render_block(*i.block);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 fn render_while(w:AST_Stmt_While) {
     ind();
     print("(WHILE ");
-    IND=IND+1;
+    IND++;
     render_expr(*w.cond);
     render_block(*w.block);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 fn render_return(r:AST_Stmt_Return) {
     ind();
     print("(RETURN ");
-    IND=IND+1;
+    IND++;
     if r.expr != 0 {
         render_expr(*r.expr);
     }
@@ -1651,7 +1626,7 @@ fn render_return(r:AST_Stmt_Return) {
         ind();
         print("(NOEXPR)");
     }
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1671,15 +1646,14 @@ fn render_stmt(s:AST_Stmt) {
 fn render_block(b:Block) {
     i:int = 0;
     while i < b.stmts_len {
-        render_stmt(b.stmts[i]);
-        i=i+1;
+        render_stmt(b.stmts[i++]);
     }
 }
 fn render_fun_def(fun:AST_Def_Fun) {
     ind();
     print("(FUNDEF ");
     write(fun.name, fun.name_len);
-    IND=IND+1;
+    IND++;
     i:int=0;
     print(" nargs:");
     print(fmt_dec(fun.num_args));
@@ -1688,15 +1662,15 @@ fn render_fun_def(fun:AST_Def_Fun) {
         ind();
         print("(ARG ");
         write(fun.arg_names[i], fun.arg_name_lens[i]);
-        IND=IND+1;
+        IND++;
         render_type(fun.arg_types[i]);
-        IND=IND-1;
+        IND--;
         print(")");
-        i=i+1;
+        i++;
     }
     i=0;
     render_block(fun.block);
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1706,20 +1680,20 @@ fn render_type_def(ts:TypeStructDef) {
     write(ts.name, ts.name_len);
     print(" nfields:");
     print(fmt_dec(ts.n_fields));
-    IND=IND+1;
+    IND++;
     i:int=0;
     while i < ts.n_fields {
         ind();
         print("(FIELD ");
         write(ts.field_names[i], 
               ts.field_name_lens[i]);
-        IND=IND+1;
+        IND++;
         render_type(ts.types[i]);
-        IND=IND-1;
+        IND--;
         print(")");
-        i=i+1;
+        i++;
     }
-    IND=IND-1;
+    IND--;
     print(")");
 }
 
@@ -1731,7 +1705,7 @@ fn render_ast(ast:*AST) {
         if d.kind == AST_DEF_CONST { render_const_def(d.global);}
         if d.kind == AST_DEF_VAR   { render_var_def(d.global);}
         if d.kind == AST_DEF_TYPE  { render_type_def(d.stru);}
-        i=i+1;
+        i++;
     }
     println("");
 }
@@ -1818,8 +1792,7 @@ fn sym_add_type(ts:TypeStructDef) {
         TT.structs = realloc(TT.structs, TT.cap * @size(TypeStructDef));
     }
     ts.sizeb = -1; // mark it as unknown for now
-    TT.structs[TT.len] = ts;
-    TT.len = TT.len+1;
+    TT.structs[TT.len++] = ts;
 }
 
 fn sym_search_type_idx(idx:int) TypeStructDef {
@@ -1833,7 +1806,7 @@ fn sym_search_type(name:*char, name_len:int) int {
         if t.name_len == name_len && streq(name, t.name, name_len) {
             return i;
         }
-        i=i+1;
+        i++;
     }
     error("couldn't find type");
     return 0;//unreachable
@@ -1844,7 +1817,6 @@ fn sym_compute_type_sizes() {
     last_round_total_finished:int = 0;
     while n_finished != TT.len {
         t_i:int = 0;
-        // for (int t_i = 0; t_i < TT.len; t_i++) 
         while (t_i < TT.len) {
             if TT.structs[t_i].sizeb != -1 { continue; }
             size_accum:int = 0;
@@ -1855,23 +1827,23 @@ fn sym_compute_type_sizes() {
                 st:TypeStructDef;
                 if t.kind == TYPE_KIND_PTR {
                     size_accum = size_accum+8;
-                    fields_finished = fields_finished+1;
+                    fields_finished++;
                 }
                 if t.kind == TYPE_KIND_BASE {
                     if t.base == TYPE_VOID { error("can't compute the size of void"); }
-                    if t.base == TYPE_BOOL { size_accum = size_accum+1; }
+                    if t.base == TYPE_BOOL { size_accum++; }
                     if t.base == TYPE_INT { size_accum = size_accum+8; }
-                    if t.base == TYPE_CHAR { size_accum = size_accum+1; }
-                    fields_finished = fields_finished+1;
+                    if t.base == TYPE_CHAR { size_accum++; }
+                    fields_finished++;
                 }
                 if t.kind == TYPE_KIND_STRUCT {
                     st = sym_search_type_idx(sym_search_type(
                         t.struct_name.name, t.struct_name.name_len));
-                    if st.sizeb == -1 { f_i=f_i+1; continue; }
+                    if st.sizeb == -1 { f_i++; continue; }
                     size_accum = size_accum+st.sizeb;
-                    fields_finished = fields_finished+1;
+                    fields_finished++;
                 }
-                f_i=f_i+1;
+                f_i++;
             }
 
             if fields_finished == TT.structs[t_i].n_fields {
@@ -1881,10 +1853,10 @@ fn sym_compute_type_sizes() {
                 print("': ");
                 print(fmt_dec(size_accum));
                 println("");
-                n_finished=n_finished+1;
+                n_finished++;
                 TT.structs[t_i].sizeb = sizeb;
             }
-            t_i=t_i+1;
+            t_i++;
         }
         if last_round_total_finished == n_finished {
             error("couldn't resolve type sizes, maybe you have recursive definitions?");
@@ -1899,8 +1871,7 @@ fn sym_push_frame() {
         SSS.cap = SSS.cap*2;
         SSS.frames = realloc(SSS.frames, SSS.cap * @size(SSSFrame));
     }
-    new_frame:*SSSFrame = &SSS.frames[SSS.len];
-    SSS.len = SSS.len+1;
+    new_frame:*SSSFrame = &SSS.frames[SSS.len++];
     new_frame.cap = 16;
     new_frame.len = 0;
     new_frame.sret_offset = -1;
@@ -1940,8 +1911,7 @@ fn new_sym() *Symbol {
         ST.cap = ST.cap*2;
         ST.symbols = realloc(ST.symbols, ST.cap * @size(Symbol));
     }
-    sym:*Symbol = &ST.symbols[ST.len];
-    ST.len = ST.len + 1;
+    sym:*Symbol = &ST.symbols[ST.len++];
     return sym;
 }
 
@@ -1970,8 +1940,7 @@ fn new_entry() *SSSEntry {
         f.cap = f.cap*2;
         f.entries = realloc(f.entries, f.cap * @size(SSSEntry));
     }
-    e:*SSSEntry = &f.entries[f.len];
-    f.len = f.len + 1;
+    e:*SSSEntry = &f.entries[f.len++];
     return e;
 }
 
@@ -2118,8 +2087,7 @@ fn tc_builtin_call(c:*AST_Expr_Call) Type {
     if c.fun_expr.builtin == BUILTIN_SYSCALL {
         i:int = 0;
         while i < c.args_len {
-            tc_expr(&c.args[i]);
-            i=i+1;
+            tc_expr(&c.args[i++]);
         }
         return ast_new_base_type(TYPE_INT);
     }
@@ -2162,7 +2130,7 @@ fn tc_call(c:*AST_Expr_Call) Type {
         sym_fill_index_if_struct(&c.args[i].ty);
         if !tc_can_unify(f.arg_types[i], c.args[i].ty) { error("Expected argument type mismatch"); }
         c.args[i].ty = f.arg_types[i];
-        i=i+1;
+        i++;
     }
 
     if f.return_type.kind == TYPE_KIND_STRUCT {
@@ -2205,7 +2173,7 @@ fn tc_access(access:*AST_Expr_Binop) Type {
         if !(field_len == ts.field_name_lens[i] &&
               streq(ts.field_names[i], field, field_len)) {
             accum_offset = accum_offset+size_of_type(ts.types[i]);
-            i = i+1;
+            i++;
             continue;
         }
         access.offsetb = accum_offset;
@@ -2497,7 +2465,7 @@ fn tc_block(b:*Block, ret:Type) {
     i:int = 0;
     while i < b.stmts_len {
         tc_stmt(&b.stmts[i], ret);
-        i=i+1;
+        i++;
     }
 }
 
@@ -2514,7 +2482,7 @@ fn tc_fun(fun:*AST_Def_Fun) {
         sym_fill_index_if_struct(&fun.arg_types[i]);
         fun.arg_sym_idxs[i] = sym_add_svar_arg(
             fun.arg_types[i], fun.arg_names[i], fun.arg_name_lens[i]);
-        i=i+1;
+        i++;
     }
 
     tc_block(&fun.block, fun.return_type);
@@ -2530,11 +2498,10 @@ fn tc_fun(fun:*AST_Def_Fun) {
         ret_stmt.kind = AST_STMT_RETURN;
         ret_stmt.returnn.expr = 0;
         if b.stmt_cap <= b.stmts_len {
-            b.stmt_cap = b.stmt_cap + 1;
+            b.stmt_cap++;
             b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
-        b.stmts[b.stmts_len] = ret_stmt;
-        b.stmts_len = b.stmts_len + 1;
+        b.stmts[b.stmts_len++] = ret_stmt;
     }
 
     // check that some last return exists
@@ -2571,7 +2538,7 @@ fn define_top_level(ast:*AST) {
             tc_expr(d.global.expr);
             sym_add_global_const(d.global);
         }
-        i=i+1;
+        i++;
     }
 }
 
@@ -2583,7 +2550,7 @@ fn type_check(ast:*AST) {
     i:int = 0;
     while i < ast.defs_len {
         tc_def(&ast.defs[i]);
-        i=i+1;
+        i++;
     }
     sym_pop_frame();
 }
@@ -2684,7 +2651,7 @@ fn calln(val:*char, len:int) {
     i:int = 0;
     while i < len {
         bfr[i] = val[i];
-        i=i+1;
+        i++;
     }
     bfr[len] = '\0';
     call(bfr); 
@@ -2744,7 +2711,7 @@ fn glbl_lbl(val:*char, len:int) *char {
     while i < len {
         if (val[i] == '\0') { break; }
         bfr[i] = val[i];
-        i=i+1;
+        i++;
     }
     bfr[i] = '\0';
     bfr = strcat("GLBL_", bfr);
@@ -2831,7 +2798,7 @@ fn cg_init_maps() {
 }
 
 fn cg_lbl() int { 
-    CG_LBL_CTR = CG_LBL_CTR+1;
+    CG_LBL_CTR++;
     return CG_LBL_CTR; 
 }
 fn save_const_string(s:AST_Expr_Lit_String) int {
@@ -2850,8 +2817,7 @@ fn save_const_string(s:AST_Expr_Lit_String) int {
     e:CG_StrEntry;
     e.text = s.text;
     e.label = lbl;
-    CG_STRS.strings[CG_STRS.len] = e;
-    CG_STRS.len = CG_STRS.len+1;
+    CG_STRS.strings[CG_STRS.len++] = e;
     return lbl;
 }
 
@@ -3097,7 +3063,7 @@ fn cg_syscall(call:AST_Expr_Call) {
     i:int = 0;
     while i < call.args_len {
         cg_expr(call.args[i]);
-        i=i+1;
+        i++;
     }
     i = call.args_len - 1;
     while i >= 1 {
@@ -3141,12 +3107,12 @@ fn cg_call(call:AST_Expr_Call) {
             rep_movsb();
             push_s("QWORD", "rbx");// push the address of the temporary
         }
-        i=i+1;
+        i++;
     }
 
     sret_reg_off:int = 0;
     if fun_sym.fun.return_type.kind == TYPE_KIND_STRUCT {
-        sret_reg_off = sret_reg_off+1;
+        sret_reg_off++;
         sret_sym:*Symbol = sym_search(call.temporary_sret_sym_idx);
         lea(arg_regs(0), offset_min("rbp", sret_sym.offset));
     }
@@ -3291,7 +3257,7 @@ fn cg_label_n(str_lbl:*char, len:int) {
     i:int = 0;
     while i < len {
         aux[i] = str_lbl[i];
-        i=i+1;
+        i++;
     }
     aux[i] = '\0';
     write_lbl(strcat(aux, ":"));
@@ -3485,7 +3451,7 @@ fn cg_block(b:Block, break_lbl:*char, continue_lbl:*char) {
     i:int = 0;
     while i < b.stmts_len {
         cg_stmt(b.stmts[i], break_lbl, continue_lbl);
-        i=i+1;
+        i++;
     }
 }
 
@@ -3504,13 +3470,13 @@ fn cg_fun_def(fun:AST_Def_Fun) {
     sret_reg_off:int = 0;
     if (fun.return_type.kind == TYPE_KIND_STRUCT) {
         mov(offset_min("rbp", 8), arg_regs(0));
-        sret_reg_off=sret_reg_off+1;
+        sret_reg_off++;
     }
     i:int =0;
     while i < fun.num_args {
         s:*Symbol = sym_search(fun.arg_sym_idxs[i]);
         mov(offset_min("rbp", s.offset), arg_regs(i+sret_reg_off));
-        i=i+1;
+        i++;
     }
     cg_block(fun.block, 0, 0);
 }
@@ -3590,8 +3556,7 @@ fn cg_rodata() {
 
             j:int=0;
             while true {
-                c:char = s.text[j];
-                j=j+1;
+                c:char = s.text[j++];
                 if (c == '\0') { break; }
                 if (c <= '\r' || c=='"') {
                     write_arbirary("\", ");
@@ -3602,7 +3567,7 @@ fn cg_rodata() {
                 write_char(c);
             }
             write_arbirary("\", 0\n");
-            i=i+1;
+            i++;
         }
     }
     
@@ -3612,7 +3577,7 @@ fn cg_rodata() {
         if (st.symbols[i].kind == SYM_KIND_CONST) {
             cg_data_def(st.symbols[i].def);
         }
-        i=i+1;
+        i++;
     }
 }
 
@@ -3625,7 +3590,7 @@ fn cg_data() {
         if (st.symbols[i].kind == SYM_KIND_VAR) {
             cg_data_def(st.symbols[i].def);
         }
-        i=i+1;
+        i++;
     }
 }
 
@@ -3644,7 +3609,7 @@ fn gen_asm(ast:AST, output_file:*char) {
         if ast.defs[i].kind == AST_DEF_FUN {
             cg_fun_def(ast.defs[i].fun);
         }
-        i=i+1;
+        i++;
     }
     
     cg_entry();

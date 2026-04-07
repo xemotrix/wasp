@@ -1,0 +1,226 @@
+////////////////////////////////////
+// STDLIB                         //
+////////////////////////////////////
+const SYS_READ:int   = 0;
+const SYS_WRITE:int  = 1;
+const SYS_OPEN:int   = 2;
+const SYS_MMAP:int   = 9;
+const SYS_MUNMAP:int = 11;
+const SYS_EXIT:int   = 60;
+
+const PROT_READ:int     = 1;
+const PROT_WRITE:int    = 3;
+const MAP_PRIVATE:int   = 2;
+const MAP_ANONYMOUS:int = 32;
+
+const STDOUT:int = 1;
+
+fn strlen(str:*char) int {
+    i:int = 0;
+    while str[i] != '\0' {
+        i = i+1;
+    }
+    return i;
+}
+
+fn write(str:*char, len:int) int {
+    return @syscall(SYS_WRITE, STDOUT, str, len);
+}
+
+fn print(str:*char) {
+    len:int = strlen(str);
+    write(str, len);
+}
+
+fn println(str:*char) {
+    print(str);
+    print("\n");
+}
+
+fn exit(code:int) {
+    @syscall(SYS_EXIT, code);
+}
+
+fn strncmp(a:*char, b:*char, len:int) bool {
+    i:int = 0;
+    while i < len {
+        if a[i] != b[i] {
+            return false;
+        }
+        i=i+1;
+    }
+    return true;
+}
+
+fn munmap(addr:int, size:int) int {
+    return @syscall(SYS_MUNMAP, addr, size);
+}
+
+fn mmap(size:int) int {
+    fd:int = -1;
+    offset:int = 0;
+    addr:int=0;
+    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
+}
+
+fn alloc(size:int) int {
+    ptr:*int = mmap(size+8);
+    *ptr = size;
+    return ptr+8;
+}
+
+fn realloc(old_ptr:*int, new_size:int) int {
+    old_size:int = old_ptr[-1];
+    if new_size < old_size {
+        return old_ptr; // memory is cheap lmao
+    }
+    new_ptr:*int = alloc(new_size);
+    offset:int = 0;
+    while (offset < old_size) {
+        new_ptr[offset] = old_ptr[offset];
+        offset=offset+8;
+    }
+    return new_ptr;
+}
+
+fn free(ptr:*int) int {
+    size:int = ptr[-8];
+    return munmap(ptr-8, size+8);
+}
+
+fn open(filename:*char) int {
+    return @syscall(SYS_OPEN, filename, 0, 0);
+}
+
+fn read(fd:int, buf:*char, count:int) int {
+    return @syscall(SYS_READ, fd, buf, count);
+}
+
+fn read_file(filename:*char) *char {
+    fd:int = open(filename);
+    if fd < 0 {
+        println("Error reading file");
+        exit(1);
+    }
+    buf:*char = alloc(4096*100);
+    to_read:int = 1024;
+    chunk_c:int = 0;
+    while true {
+        bread:int = read(fd, buf+chunk_c*to_read, to_read);
+        if bread == 0 {
+            println("No bytes read :(");
+            exit(1);
+        }
+        if bread == to_read {
+            println("there is more to read...");
+        }
+        if bread != to_read {
+            println("there is NO more to read!");
+            break;
+        }
+        chunk_c = chunk_c + 1;
+    }
+    return buf;
+}
+
+fn fmt_hex(num:int) *char {
+    out:*char = alloc(16+3);
+    hex:*char = "0123456789abcdef";
+    *out = '0';
+    *(out+1) = 'x';
+    i:int=0;
+    shift:int;
+    idx:int;
+    while i < 16 {
+        shift = (15-i) * 4;
+        idx = (num>>shift)&15;
+        out[i+2] = hex[idx];
+        i=i+1;
+    }
+    out[16+3] = '\0';
+    return out;
+}
+
+fn strcat(a:*char, b:*char) *char {
+    lena:int = strlen(a);
+    lenb:int = strlen(b);
+    new:*char = alloc(lena+lenb);
+    ptr:*char = new;
+    i:int = 0;
+    while i < lena {
+        *ptr = a[i];
+        ptr=ptr+1;
+        i=i+1;
+    }
+    i = 0;
+    while i < lenb {
+        *ptr = b[i];
+        ptr=ptr+1;
+        i=i+1;
+    }
+    return new;
+}
+
+fn streq(a:*char, b:*char, len:int) bool {
+    i:int = 0;
+    while i < len {
+        if a[i] == '\0' || b[i] == '\0' {
+            return false;
+        }
+        if a[i] != b[i] {
+            return false;
+        }
+        i=i+1;
+    }
+    return true;
+} 
+
+////////////////////////////////////
+// TEST                           //
+////////////////////////////////////
+
+fn check_num(expected_str:*char, expected: int, num:int) {
+    if num == expected {
+        print("OK: expected: (");
+        print(expected_str);
+        print("), got: ");
+        println(fmt_hex(num));
+    }
+    if num != expected {
+        print("FAIL: expected ");
+        print(fmt_hex(expected));
+        print(" but got ");
+        println(fmt_hex(num));
+    }
+    return;
+}
+
+fn test1() {
+    println("=====test1=====");
+    i:int = 42;
+    j:int = i++;
+    check_num("0x2a", 42, j);
+    check_num("0x2b", 43, i);
+}
+
+fn test2() {
+    println("=====test2=====");
+    str:*char= "hello";
+    i:int = 0;
+    while str[i++] != '\0' {}
+    check_num("0x5", 5, i);
+}
+
+
+fn main() int {
+    test1();
+    test2();
+
+    return 0;
+}
+
+// b+XX  last field
+// b+16  ....
+// b+08  second field
+// b+00  << Struct start (first field)
+
