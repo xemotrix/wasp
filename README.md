@@ -39,7 +39,6 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-- #include or similar (modules directly?), not a single monster file
 - better error reporting;
 
 ### NTH
