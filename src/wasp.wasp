@@ -82,18 +82,17 @@ fn realloc(old_ptr:*int, new_size:int) int {
         return old_ptr; // memory is cheap lmao
     }
     new_ptr:*int = alloc(new_size);
-    offset:int = 0;
     i:int = 0;
-    while (offset < old_size) {
+    while i*8 < old_size {
         new_ptr[i] = old_ptr[i];
-        offset=offset+8;
         i++;
     }
+    if new_ptr != old_ptr { free(old_ptr); }
     return new_ptr;
 }
 
 fn free(ptr:*int) int {
-    size:int = ptr[-8];
+    size:int = ptr[-1];
     return munmap(ptr-8, size+8);
 }
 
@@ -124,13 +123,7 @@ fn read_file(filename:*char) *char {
             println("No bytes read :(");
             exit(1);
         }
-        if bread == to_read {
-            println("there is more to read...");
-        }
-        if bread != to_read {
-            println("there is NO more to read!");
-            break;
-        }
+        if bread != to_read { break; }
         chunk_c++;
     }
     return buf;
@@ -300,7 +293,7 @@ fn is_whitespace(c:char) bool { return c == ' ' || c == '\t' || c == '\r' || c =
 fn is_alpha(c:char ) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 fn is_digit(c:char) bool { return c >= '0' && c <= '9'; }
 
-fn peek_token(src:*char) Token {
+fn lex_peek_token(src:*char) Token {
     ref:*char = 0;
     while ref != src {
         ref = src;
@@ -530,9 +523,48 @@ fn lex_token(src:**char) Token {
         }
         *src = *src + len_skip_comments(*src);
     }
-    t:Token = peek_token(*src);
+    t:Token = lex_peek_token(*src);
     *src = *src + t.text_len;
     return t;
+}
+
+struct TokenTable {
+    tokens:*Token;
+    idx:int;
+    len:int;
+    cap:int;
+}
+
+var TOKEN_TABLE:*TokenTable = 0;
+
+fn lex(src:**char) {
+    tt:TokenTable;
+    tt.len = 0;
+    tt.idx = 0;
+    tt.cap = 4;
+    tt.tokens = alloc(tt.cap*@size(Token));
+
+    t:Token; t.type = -1;
+    while t.type != TOK_EOF {
+        t = lex_token(src);
+        if tt.len >= tt.cap {
+            tt.cap = tt.cap * 2;
+            tt.tokens = realloc(tt.tokens, tt.cap*@size(Token));
+        }
+        tt.tokens[tt.len++] = t;
+    }
+    TOKEN_TABLE = alloc(@size(TokenTable));
+    *TOKEN_TABLE = tt;
+    return;
+}
+
+fn token_next() Token {
+    if TOKEN_TABLE.idx >= TOKEN_TABLE.len { error("no more tokens"); }
+    return TOKEN_TABLE.tokens[TOKEN_TABLE.idx++];
+}
+fn token_peek() Token {
+    if TOKEN_TABLE.idx >= TOKEN_TABLE.len { error("no more tokens"); }
+    return TOKEN_TABLE.tokens[TOKEN_TABLE.idx];
 }
 
 ////////////////////////////////////
@@ -771,7 +803,7 @@ fn parse_var(t:Token) AST_Expr {
     return e;
 }
 
-fn parse_builtin(src:**char, t:Token) AST_Expr {
+fn parse_builtin(t:Token) AST_Expr {
     e:AST_Expr;
     if streq(t.text, "@syscall", 8) {
         // just a builtin var and parse the rest as normal expression
@@ -784,13 +816,13 @@ fn parse_builtin(src:**char, t:Token) AST_Expr {
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SIZE;
 
-        t = lex_token(src);
+        t = token_next();
         if t.type != TOK_LPAREN { error("expected '(' after @size"); }
 
-        t = lex_token(src);
-        e.ty = parse_type(src, t);
+        t = token_next();
+        e.ty = parse_type(t);
 
-        t = lex_token(src);
+        t = token_next();
         if t.type != TOK_RPAREN { error("missing ')' after @size"); }
         return e;
     }
@@ -882,7 +914,7 @@ fn parse_lit_int(t:Token) AST_Expr {
     return e;
 }
 
-fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
+fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
     expr:AST_Expr;
     expr.kind = AST_EXPR_CALL;
 
@@ -890,14 +922,14 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
     expr.call.fun_expr = alloc(@size(AST_Expr));
     *expr.call.fun_expr = fun_expr;
 
-    t = lex_token(src);
+    t = token_next();
     if t.type != TOK_LPAREN { error("Expected '('"); }
 
     args_cap:int = 2;
     expr.call.args = alloc(args_cap * @size(AST_Expr));
     expr.call.args_len = 0;
     while true {
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_RPAREN { break; }
         if t.type == TOK_EOF { error("Expected ')' or expression but found EOF"); }
         if expr.call.args_len >= args_cap {
@@ -905,8 +937,8 @@ fn parse_call(src:**char, t:Token, fun_expr:AST_Expr) AST_Expr {
             expr.call.args = realloc(expr.call.args, args_cap * @size(AST_Expr));
         }
 
-        expr.call.args[expr.call.args_len++] = parse_expr(src, t);
-        t = lex_token(src);
+        expr.call.args[expr.call.args_len++] = parse_expr(t);
+        t = token_next();
         if t.type == TOK_COMMA { continue; }
         if t.type == TOK_RPAREN { break; }
         error("Expected ',' or ')'");
@@ -955,7 +987,7 @@ fn infix_prec(ttype:int) int {
 }
 const MAX_PREC:int = 999;
 
-fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
+fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
     left:AST_Expr;
 
     left.kind = -1; 
@@ -964,11 +996,11 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
     if t.type == TOK_LIT_STRING { left = parse_lit_string(t); }
     if t.type == TOK_LIT_CHAR { left = parse_lit_char(t); }
     if t.type == TOK_IDEN { left = parse_var(t); }
-    if t.type == TOK_BUILTIN { left = parse_builtin(src, t); }
+    if t.type == TOK_BUILTIN { left = parse_builtin(t); }
     if t.type == TOK_LPAREN {
-        t = lex_token(src);
-        left = parse_expr(src, t);
-        t = lex_token(src);
+        t = token_next();
+        left = parse_expr(t);
+        t = token_next();
         if t.type != TOK_RPAREN { error("Expected ')' :("); }
     }
 
@@ -976,42 +1008,42 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
     if left.kind < 0 && pre_prec != 0 {
         left.kind = AST_EXPR_UNOP;
         left.unop.op = t.type;
-        t = lex_token(src);
+        t = token_next();
         left.unop.expr = alloc(@size(AST_Expr));
-        *left.unop.expr = parse_expr_with_prec(src, t, pre_prec);
+        *left.unop.expr = parse_expr_with_prec(t, pre_prec);
     }
 
     op:Token;
     res:AST_Expr = left;
 
     while true {
-        op = peek_token(*src);
+        op = token_peek();
         // postfix operators:
         postf_prec:int = postfix_prec(op.type);
         if postf_prec != 0 {
             if postf_prec >= prec { break; }
             
             if op.type == TOK_LPAREN {
-                res = parse_call(src, t, left);
+                res = parse_call(t, left);
                 continue;
             }
             new_res:AST_Expr;
             if op.type == TOK_LSQBR {
-                lex_token(src);
-                t = lex_token(src);
+                token_next();
+                t = token_next();
                 new_res.kind = AST_EXPR_BINOP;
                 new_res.binop.left = alloc(@size(AST_Expr));
                 *new_res.binop.left = res;
                 new_res.binop.op = op.type;
                 new_res.binop.right = alloc(@size(AST_Expr));
-                *new_res.binop.right = parse_expr(src, t);
-                t = lex_token(src);
+                *new_res.binop.right = parse_expr(t);
+                t = token_next();
                 if t.type != TOK_RSQBR { error("Missing closing ']'"); }
                 res = new_res;
                 continue;
             }
 
-            t = lex_token(src);
+            t = token_next();
             new_res.kind = AST_EXPR_UNOP;
             new_res.unop.op = t.type;
             new_res.unop.expr = alloc(@size(AST_Expr));
@@ -1025,16 +1057,16 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
         if inf_prec != 0 {
             if inf_prec >= prec { break; }
 
-            t = lex_token(src);
+            t = token_next();
             new_res:AST_Expr;
             new_res.kind = AST_EXPR_BINOP;
             new_res.binop.left = alloc(@size(AST_Expr));
             *new_res.binop.left = res;
             new_res.binop.op = t.type;
 
-            t = lex_token(src);
+            t = token_next();
             new_res.binop.right = alloc(@size(AST_Expr));
-            *new_res.binop.right = parse_expr_with_prec(src, t, inf_prec);
+            *new_res.binop.right = parse_expr_with_prec(t, inf_prec);
             res = new_res;
             continue;
         }
@@ -1043,20 +1075,21 @@ fn parse_expr_with_prec(src:**char, t:Token, prec:int) AST_Expr {
     return res;
 }
 
-fn parse_expr(src:**char, t:Token) AST_Expr {
-    return parse_expr_with_prec(src, t, MAX_PREC);
+fn parse_expr(t:Token) AST_Expr {
+    return parse_expr_with_prec(t, MAX_PREC);
 }
 
-fn parse_type(src:**char, t:Token) Type {
+fn parse_type(t:Token) Type {
     if t.type == TOK_ASTERISK {
-        t = lex_token(src);
-        return ast_new_ptr_type(parse_type(src, t));
+        t = token_next();
+        return ast_new_ptr_type(parse_type(t));
     }
     if t.type == TOK_IDEN {
         ty:Type;
         ty.kind = TYPE_KIND_STRUCT;
         ty.struct_name.name = t.text;
         ty.struct_name.name_len = t.text_len;
+        ty.struct_name.sym_idx = -1;
         return ty;
     }
 
@@ -1070,14 +1103,14 @@ fn parse_type(src:**char, t:Token) Type {
     return ty;
 }
 
-fn parse_stmt_define(src:**char, t:Token) AST_Stmt {
+fn parse_stmt_define(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_DEFINE;
     stmt.define.var_name = t.text;
     stmt.define.var_name_len = t.text_len;
 
-    lex_token(src); // skip the ':' (should already be checked for)
-    t = lex_token(src);
+    token_next(); // skip the ':' (should already be checked for)
+    t = token_next();
 
     found_type:bool=false;
     if t.type == TOK_TY_BOOL
@@ -1086,31 +1119,31 @@ fn parse_stmt_define(src:**char, t:Token) AST_Stmt {
     || t.type == TOK_TY_CHAR
     || t.type == TOK_ASTERISK
     || t.type == TOK_IDEN {
-        stmt.define.t = parse_type(src, t);
+        stmt.define.t = parse_type(t);
         found_type = true;
     }
     if !found_type { error("Expected type after ':'"); }
 
-    t = lex_token(src);
+    t = token_next();
     if t.type == TOK_SEMICOLON {
         stmt.define.expr = 0;
         return stmt;
     }
     if t.type != TOK_EQUALS { error("Expected '=' after type in definition"); }
-    t = lex_token(src);
+    t = token_next();
     stmt.define.expr = alloc(@size(AST_Expr));
-    *stmt.define.expr = parse_expr(src, t);
-    t = lex_token(src);
+    *stmt.define.expr = parse_expr(t);
+    t = token_next();
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
     return stmt;
 }
 
-fn parse_stmt_assign_or_raw_expr(src:**char, t:Token) AST_Stmt {
+fn parse_stmt_assign_or_raw_expr(t:Token) AST_Stmt {
     is_builtin:bool = t.type == TOK_BUILTIN;
     stmt:AST_Stmt;
-    lvalue:AST_Expr = parse_expr(src, t);
+    lvalue:AST_Expr = parse_expr(t);
 
-    t = lex_token(src);
+    t = token_next();
 
     if is_builtin {
         if t.type != TOK_SEMICOLON { error("expected ';'"); }
@@ -1129,116 +1162,116 @@ fn parse_stmt_assign_or_raw_expr(src:**char, t:Token) AST_Stmt {
 
     stmt.kind = AST_STMT_ASSIGN;
     stmt.assign.lvalue = lvalue;
-    t = lex_token(src);
-    stmt.assign.rvalue = parse_expr(src, t);
-    t = lex_token(src);
+    t = token_next();
+    stmt.assign.rvalue = parse_expr(t);
+    t = token_next();
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
     return stmt;
 }
 
-fn parse_stmt_while(src:**char, t:Token) AST_Stmt {
+fn parse_stmt_while(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_WHILE;
-    t = lex_token(src);
+    t = token_next();
     stmt.whilee.cond = alloc(@size(AST_Expr));
-    *stmt.whilee.cond = parse_expr(src, t);
-    t = lex_token(src);
+    *stmt.whilee.cond = parse_expr(t);
+    t = token_next();
     stmt.whilee.block = alloc(@size(Block));
-    *stmt.whilee.block = parse_block(src, t);
+    *stmt.whilee.block = parse_block(t);
     return stmt;
 }
 
-fn parse_stmt_if(src:**char, t:Token) AST_Stmt {
+fn parse_stmt_if(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_IF;
-    t = lex_token(src);
+    t = token_next();
     stmt.iff.cond = alloc(@size(AST_Expr));
-    *stmt.iff.cond = parse_expr(src, t);
+    *stmt.iff.cond = parse_expr(t);
     stmt.iff.block = alloc(@size(Block));
-    t = lex_token(src);
-    *stmt.iff.block = parse_block(src, t);
+    t = token_next();
+    *stmt.iff.block = parse_block(t);
     return stmt;
 }
 
-fn parse_stmt_return(src:**char, t:Token) AST_Stmt {
+fn parse_stmt_return(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_RETURN;
-    t = lex_token(src);
+    t = token_next();
     if t.type == TOK_SEMICOLON {
         stmt.returnn.expr = 0;
         return stmt;
     }
     stmt.returnn.expr = alloc(@size(AST_Expr));
-    *stmt.returnn.expr = parse_expr(src, t);
-    t = lex_token(src);
+    *stmt.returnn.expr = parse_expr(t);
+    t = token_next();
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
     return stmt;
 }
 
-fn parse_stmt(src:**char, t:Token) AST_Stmt {
+fn parse_stmt(t:Token) AST_Stmt {
     s:AST_Stmt;
     if t.type == TOK_KW_BREAK {
-        t = lex_token(src);
+        t = token_next();
         if t.type != TOK_SEMICOLON { error("expected semicolon after break"); }
         s.kind = AST_STMT_BREAK;
         return s;
     }
     if t.type == TOK_KW_CONTINUE {
-        t = lex_token(src);
+        t = token_next();
         if t.type != TOK_SEMICOLON { error("expected semicolon after continue"); }
         s.kind = AST_STMT_CONTINUE;
         return s;
     }
-    if t.type == TOK_KW_RETURN { return parse_stmt_return(src, t); }
-    if t.type == TOK_KW_IF { return parse_stmt_if(src, t); }
-    if t.type == TOK_KW_WHILE { return parse_stmt_while(src, t); }
+    if t.type == TOK_KW_RETURN { return parse_stmt_return(t); }
+    if t.type == TOK_KW_IF { return parse_stmt_if(t); }
+    if t.type == TOK_KW_WHILE { return parse_stmt_while(t); }
     if t.type == TOK_IDEN {
-        pt:Token = peek_token(*src);
+        pt:Token = token_peek();
         if pt.type == TOK_COLON {
-            return parse_stmt_define(src, t);
+            return parse_stmt_define(t);
         }
-        return parse_stmt_assign_or_raw_expr(src, t);
+        return parse_stmt_assign_or_raw_expr(t);
     }
     if t.type == TOK_BUILTIN
     || t.type == TOK_LPAREN
     || t.type == TOK_ASTERISK {
-        return parse_stmt_assign_or_raw_expr(src, t);
+        return parse_stmt_assign_or_raw_expr(t);
     }
 
     error("invalid statement");
     return s; // unreachable
 }
 
-fn parse_block(src:**char, t:Token) Block {
+fn parse_block(t:Token) Block {
     if t.type != TOK_LCURLY { error("Blocks should start with '{'"); }
     b:Block;
     b.stmts_len = 0;
     b.stmt_cap = 4;
     b.stmts = alloc(b.stmt_cap * @size(AST_Stmt));
     while true {
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_RCURLY { break; }
         if t.type == TOK_EOF { error("Expected '}' or statement"); }
         if b.stmts_len >= b.stmt_cap {
             b.stmt_cap = b.stmt_cap * 2;
             b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
-        b.stmts[b.stmts_len++] = parse_stmt(src, t);
+        b.stmts[b.stmts_len++] = parse_stmt(t);
     }
     return b;
 }
 
-fn parse_def_fun(src:**char, t:Token) AST_Def {
+fn parse_def_fun(t:Token) AST_Def {
     def:AST_Def;
     def.kind = AST_DEF_FUN;
 
     fun:*AST_Def_Fun = &def.fun;
 
     // parse name
-    t = lex_token(src);
+    t = token_next();
     fun.name = t.text;
     fun.name_len = t.text_len;
-    t = lex_token(src);
+    t = token_next();
     if t.type != TOK_LPAREN { error("Expected '('"); }
 
     // parse args
@@ -1250,7 +1283,7 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
     fun.arg_sym_idxs = alloc(arg_names_cap * 8);
 
     while true {
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_RPAREN { break; }
         if t.type == TOK_EOF { error("Expected ')' or fun arg but reached EOF"); }
         if t.type != TOK_IDEN { error("Expected Identifier"); }
@@ -1264,20 +1297,20 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
         fun.arg_names[fun.num_args] = t.text;
         fun.arg_name_lens[fun.num_args] = t.text_len;
 
-        t = lex_token(src);
+        t = token_next();
         if t.type != TOK_COLON { error("expected ':'"); }
 
-        t = lex_token(src);
-        ty:Type = parse_type(src, t);
+        t = token_next();
+        ty:Type = parse_type(t);
         fun.arg_types[fun.num_args++] = ty;
 
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_COMMA { continue; }
         if t.type == TOK_RPAREN { break; }
         error("Expected ',' or ')' in function signature");
     }
 
-    t = lex_token(src);
+    t = token_next();
     if t.type == TOK_LCURLY {
         void_t:Type;
         void_t.kind = TYPE_KIND_BASE;
@@ -1285,22 +1318,22 @@ fn parse_def_fun(src:**char, t:Token) AST_Def {
         fun.return_type = void_t;
     }
     if t.type != TOK_LCURLY {
-        fun.return_type = parse_type(src, t);
-        t = lex_token(src);
+        fun.return_type = parse_type(t);
+        t = token_next();
     }
 
-    fun.block = parse_block(src, t);
+    fun.block = parse_block(t);
     return def;
 }
 
-fn parse_def_varconst(src:**char, t:Token) AST_Def {
+fn parse_def_varconst(t:Token) AST_Def {
     d:AST_Def;
     if t.type == TOK_KW_CONST { d.kind = AST_DEF_CONST; }
     if t.type == TOK_KW_VAR { d.kind = AST_DEF_VAR; }
 
-    t = lex_token(src);
+    t = token_next();
 
-    stmt:AST_Stmt = parse_stmt_define(src, t);
+    stmt:AST_Stmt = parse_stmt_define(t);
     kind:int = stmt.define.expr.kind;
     if kind != AST_EXPR_LIT_INT
     && kind != AST_EXPR_LIT_STRING
@@ -1313,14 +1346,14 @@ fn parse_def_varconst(src:**char, t:Token) AST_Def {
     return d;
 }
 
-fn parse_def_struct(src:**char, t:Token) AST_Def {
+fn parse_def_struct(t:Token) AST_Def {
     def:AST_Def;
     def.kind = AST_DEF_TYPE;
-    t = lex_token(src);
+    t = token_next();
     if t.type != TOK_IDEN { error("Expected identifier after 'struct'"); }
     def.stru.name = t.text;
     def.stru.name_len = t.text_len;
-    t = lex_token(src);
+    t = token_next();
     if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
 
     cap:int = 2;
@@ -1332,21 +1365,25 @@ fn parse_def_struct(src:**char, t:Token) AST_Def {
     while (true) {
         if n_args >= cap {
             cap = cap * 2;
-            def.stru.field_names = realloc(def.stru.field_names, cap*8);
-            def.stru.field_name_lens = realloc(def.stru.field_name_lens, cap * 8);
+            def.stru.field_names = realloc(def.stru.field_names, cap*@size(*char));
+            def.stru.field_name_lens = realloc(def.stru.field_name_lens, cap*@size(int));
             def.stru.types = realloc(def.stru.types, cap * @size(Type));
         }
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_RCURLY { break; }
         if t.type != TOK_IDEN { error("Expected identifier in struct definition"); }
         def.stru.field_names[n_args] = t.text;
         def.stru.field_name_lens[n_args] = t.text_len;
 
-        t = lex_token(src);
-        if t.type != TOK_COLON { error("Expected ':' after identifier in struct definition"); }
-        t = lex_token(src);
-        def.stru.types[n_args] = parse_type(src, t);
-        t = lex_token(src);
+        t = token_next();
+        if t.type != TOK_COLON { 
+            write(def.stru.name, def.stru.name_len);
+            println(fmt_dec(t.type));
+            error("Expected ':' after identifier in struct definition"); 
+        }
+        t = token_next();
+        def.stru.types[n_args] = parse_type(t);
+        t = token_next();
         if t.type != TOK_SEMICOLON { error("Expected ';' after type in struct definition"); }
         n_args++;
     }
@@ -1355,32 +1392,32 @@ fn parse_def_struct(src:**char, t:Token) AST_Def {
     return def;
 }
 
-fn parse_def(src:**char, t:Token) AST_Def {
+fn parse_def(t:Token) AST_Def {
     if t.type == TOK_KW_CONST || t.type == TOK_KW_VAR {
-        return parse_def_varconst(src, t);
+        return parse_def_varconst(t);
     }
-    if t.type == TOK_KW_STRUCT { return parse_def_struct(src, t); }
-    if t.type == TOK_KW_FN { return parse_def_fun(src, t); }
+    if t.type == TOK_KW_STRUCT { return parse_def_struct(t); }
+    if t.type == TOK_KW_FN { return parse_def_fun(t); }
   
     error("Expected function definition starting with fn");
     d:AST_Def; // unreachable
     return d;
 }
 
-fn parse(src:**char) AST{
+fn parse() AST{
     ast:AST;
     cap:int = 2;
     ast.defs = alloc(cap * @size(AST_Def));
     ast.defs_len = 0;
     t:Token;
     while true {
-        t = lex_token(src);
+        t = token_next();
         if t.type == TOK_EOF { break; }
         if ast.defs_len >= cap { 
             cap = cap * 2;
             ast.defs = realloc(ast.defs, cap * @size(AST_Def));
         }
-        ast.defs[ast.defs_len++] = parse_def(src, t);
+        ast.defs[ast.defs_len++] = parse_def(t);
     }
     return ast;
 }
@@ -1772,6 +1809,7 @@ var SSS:*ScopedSymbolStack = 0;
 
 fn size_of_type(t:Type) int {
     if t.kind == TYPE_KIND_STRUCT {
+        sym_fill_index_if_struct(&t);
         if t.struct_name.sym_idx >= TT.len { error("struct idx out of range"); }
         return TT.structs[t.struct_name.sym_idx].sizeb;
     }
@@ -1848,11 +1886,6 @@ fn sym_compute_type_sizes() {
 
             if fields_finished == TT.structs[t_i].n_fields {
                 sizeb:int = (size_accum + 7) & ~7;
-                print("computed size of struct '");
-                write(TT.structs[t_i].name, TT.structs[t_i].name_len);
-                print("': ");
-                print(fmt_dec(size_accum));
-                println("");
                 n_finished++;
                 TT.structs[t_i].sizeb = sizeb;
             }
@@ -3666,7 +3699,10 @@ fn main(argc:int, argv:**char) int {
     fl:Flags = parse_flags(argc, argv);
     f:*char = read_file(fl.input_file);
     src:**char = &f;
-    ast:AST = parse(src);
+
+    lex(src);
+    ast:AST = parse();
+    free(TOKEN_TABLE.tokens);
     println("finished parsing");
 
     type_check(&ast);
