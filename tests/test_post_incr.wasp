@@ -205,10 +205,11 @@ fn test1() {
 
 fn test2() {
     println("=====test2=====");
-    str:*char= "hello";
+    str:*char="hello";
     i:int = 0;
     while str[i++] != '\0' {}
-    check_num("0x5", 5, i);
+
+    check_num("0x06", 6, i);
 }
 
 
