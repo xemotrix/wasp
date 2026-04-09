@@ -18,6 +18,10 @@ fn make_ins5(a:*char, b:*char, c:*char, d:*char, e:*char) *char {
     return make_ins2(make_ins4(a, b, c, d), e);
 }
 
+// var TXTBFR:*char="";
+
+// put_text()
+
 fn write_arbirary_n(s:*char, len:int){
     write_to(CG_F, s, len);
 }
@@ -920,16 +924,6 @@ fn cg_fun_def(fun:AST_Def_Fun) {
 }
 
 fn cg_data_def(d:AST_Stmt_Declare) {
-    if d.t.kind == TYPE_KIND_PTR
-    && d.t.ptr.kind == TYPE_KIND_BASE
-    && d.t.ptr.base == TYPE_CHAR {
-        glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
-        glbl = strcat(glbl, ": db \"");
-        glbl = strcat(glbl, d.expr.lit_string.text);
-        glbl = strcat(glbl, ", 0");
-        write_ins(glbl);
-        return;
-    }
     if (d.t.kind == TYPE_KIND_PTR) {
         glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
         glbl = strcat(glbl, ": dq ");
