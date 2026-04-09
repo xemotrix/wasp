@@ -3,8 +3,6 @@ const SIZE_WORD:int  = 1;
 const SIZE_DWORD:int = 2;
 const SIZE_QWORD:int = 3;
 
-var CG_F:int = 0; // file descriptor
-
 fn make_ins2(a:*char, b:*char) *char {
     return strcat(strcat(a, " "), b);
 }
@@ -18,17 +16,27 @@ fn make_ins5(a:*char, b:*char, c:*char, d:*char, e:*char) *char {
     return make_ins2(make_ins4(a, b, c, d), e);
 }
 
-// var TXTBFR:*char="";
-
-// put_text()
-
-fn write_arbirary_n(s:*char, len:int){
-    write_to(CG_F, s, len);
+fn write_to_disk(fd:int) {
+    write_to(fd, CODE_BUFFER.text, CODE_BUFFER.len);
 }
-fn write_arbirary(s:*char){
+
+fn write_arbitrary_n(s:*char, len:int) {
+    if CODE_BUFFER.len + len >= CODE_BUFFER.cap {
+        CODE_BUFFER.cap = CODE_BUFFER.cap * 2;
+        CODE_BUFFER.text = realloc(CODE_BUFFER.text,
+                                   CODE_BUFFER.cap * @size(CodeBuffer));
+    }
+    i:int = 0;
+    while i < len {
+        CODE_BUFFER.text[CODE_BUFFER.len++] = s[i++];
+    }
+}
+
+fn write_arbitrary(s:*char){
     len:int = strlen(s);
-    write_to(CG_F, s, len);
+    write_arbitrary_n(s, len);
 }
+
 fn write_char(c:char){
     bfr:*char = alloc(3);
     bfr[0] = c;
@@ -41,13 +49,13 @@ fn write_char(c:char){
         len=2;
     }
     if c == '"' { bfr = "\""; }
-    write_to(CG_F, bfr, len);
+    write_arbitrary_n(bfr, len);
 }
 
 fn write_ins(ins:*char) {
     str:*char=strcat(strcat("\t", ins), "\n");
     len:int=strlen(str);
-    write_to(CG_F, str, len);
+    write_arbitrary_n(str, len);
 }
 fn write_ins1(a:*char) {
     write_ins(a);
@@ -68,10 +76,10 @@ fn write_ins5(a:*char, b:*char, c:*char, d:*char, e:*char) {
 fn write_lbl(lbl:*char) {
     str:*char=strcat(lbl, "\n");
     len:int=strlen(str);
-    write_to(CG_F, str, len);
+    write_arbitrary_n(str, len);
 }
 fn write_nl() {
-    write_to(CG_F, "\n", 1);
+    write_arbitrary_n("\n", 1);
 }
 
 fn syscall_() { write_ins1("syscall"); }
@@ -229,14 +237,26 @@ struct CG_StrMap {
   cap:int;
 }
 
+struct CodeBuffer {
+    text:*char;
+    len:int;
+    cap:int;
+}
+
+var CODE_BUFFER:*CodeBuffer = 0;
 var CG_LBL_CTR:int = 0;
 var CG_STRS:*CG_StrMap = 0;
 
 fn cg_init_maps() {
-    CG_STRS = alloc(24);
+    CG_STRS = alloc(@size(CG_StrMap));
     CG_STRS.len = 0;
     CG_STRS.cap = 4;
-    CG_STRS.strings = alloc(CG_STRS.cap * 16);
+    CG_STRS.strings = alloc(CG_STRS.cap * @size(CG_StrEntry));
+
+    CODE_BUFFER = alloc(@size(CodeBuffer));
+    CODE_BUFFER.len = 0;
+    CODE_BUFFER.cap = 1024 * 1024;
+    CODE_BUFFER.text = alloc(CODE_BUFFER.cap * @size(char));
 }
 
 fn cg_lbl() int { 
@@ -774,9 +794,9 @@ fn cg_stmt(stmt:AST_Stmt, break_lbl:*char, continue_lbl:*char) {
         def:AST_Stmt_Declare = stmt.define;
         s:*Symbol = sym_search(def.sym_idx);
 
-        write_arbirary("\t; define ");
-        write_arbirary_n(def.var_name, def.var_name_len);
-        write_arbirary("\n");
+        write_arbitrary("\t; define ");
+        write_arbitrary_n(def.var_name, def.var_name_len);
+        write_arbitrary("\n");
 
         if (def.expr == 0) { return; }
 
@@ -985,21 +1005,21 @@ fn cg_rodata() {
             s:CG_StrEntry = CG_STRS.strings[i];
             lbl:*char=strcat("\tSTR_", fmt_dec(s.label));
             lbl=strcat(lbl, ": db \"");
-            write_arbirary(lbl);
+            write_arbitrary(lbl);
 
             j:int=0;
             while true {
                 c:char = s.text[j++];
                 if (c == '\0') { break; }
                 if (c <= '\r' || c=='"') {
-                    write_arbirary("\", ");
-                    write_arbirary(fmt_dec(cg_especial_char_ascii(c)));
-                    write_arbirary(", \"");
+                    write_arbitrary("\", ");
+                    write_arbitrary(fmt_dec(cg_especial_char_ascii(c)));
+                    write_arbitrary(", \"");
                     continue;
                 }
                 write_char(c);
             }
-            write_arbirary("\", 0\n");
+            write_arbitrary("\", 0\n");
             i++;
         }
     }
@@ -1029,11 +1049,6 @@ fn cg_data() {
 
 
 fn gen_asm(ast:AST, output_file:*char) {
-    CG_F = open(output_file, O_WRONLY|O_CREAT|O_TRUNC, O_PERM);
-    if CG_F == 0 {
-        error("unable to open output file");
-    }
-
     cg_init_maps();
     cg_head();
 
@@ -1048,5 +1063,9 @@ fn gen_asm(ast:AST, output_file:*char) {
     cg_entry();
     cg_rodata();
     cg_data();
-    close(CG_F);
+
+    fd:int = open(output_file, O_WRONLY|O_CREAT|O_TRUNC, O_PERM);
+    if fd == 0 { error("unable to open output file"); }
+    write_to_disk(fd);
+    close(fd);
 }
