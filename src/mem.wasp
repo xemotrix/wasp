@@ -1,0 +1,313 @@
+struct HeapHeader {
+    first_free:*HeapBlockHeader;
+}
+
+struct HeapBlockHeader {
+    size:int;
+    free_next:*HeapBlockHeader;
+    free_prev:*HeapBlockHeader;
+    free:bool;
+}
+
+var GLOBAL_HEAP:*HeapHeader = 0;
+const HEAP_BLOCK_SIZE:int = 1073741824; // 1GB
+
+fn search_free_block(hh:*HeapHeader, size:int) *HeapBlockHeader {
+    current_block:*HeapBlockHeader = hh.first_free;
+    while true {
+        if current_block.size >= size {
+            if current_block.free_next == 0 
+            && current_block.size < size + @size(HeapBlockHeader) {
+                // this is the last block, we must ensure at least an
+                // HeapBlockHeader (size=0) fits. There must always be
+                // at least 1 free block
+                return 0;
+            }
+            return current_block;
+        }
+        if current_block.free_next == 0 { return 0; }
+        current_block = current_block.free_next;
+    }
+    // unreachable
+    exit(42);
+    return 0;
+}
+
+fn init_heap() *HeapHeader {
+    hh:*HeapHeader = mmap(HEAP_BLOCK_SIZE);
+    hh.first_free = hh + @size(HeapHeader);
+    hh.first_free.size = HEAP_BLOCK_SIZE - @size(HeapHeader) - @size(HeapBlockHeader);
+    hh.first_free.free = true;
+    hh.first_free.free_next = 0;
+    hh.first_free.free_prev = 0;
+    return hh;
+}
+
+fn repurpose_free_block(fb:*HeapBlockHeader, sizeb:int) {
+    // only bother creating a new free block for chunks of 8 bytes or more
+    must_create_new_free_block:bool = fb.size >= sizeb + @size(HeapBlockHeader) + 8;
+    if must_create_new_free_block {
+        new_free_block:*HeapBlockHeader = fb + @size(HeapBlockHeader) + sizeb;
+        new_free_block.size = fb.size - sizeb - @size(HeapBlockHeader);
+        new_free_block.free = true;
+        new_free_block.free_next = fb.free_next;
+        if new_free_block.free_next != 0 {
+            new_free_block.free_next.free_prev = new_free_block;
+        }
+        new_free_block.free_prev = fb.free_prev;
+        if new_free_block.free_prev != 0 {
+            new_free_block.free_prev.free_next = new_free_block;
+        }
+        if new_free_block.free_prev == 0 {
+            GLOBAL_HEAP.first_free = new_free_block;
+        }
+    }
+
+    if !must_create_new_free_block {
+        if fb.free_prev == 0 {
+            GLOBAL_HEAP.first_free = fb.free_next;
+        }
+        if fb.free_prev != 0 {
+            fb.free_prev.free_next = fb.free_next;
+        }
+        if fb.free_next != 0 {
+            fb.free_next.free_prev = fb.free_prev;
+        }
+    }
+
+    // edge case where a new free block header doesn't fit
+    // but it's not an exact match. We want to set the size
+    // to be the previous one to fill (and later free) all space
+    if fb.size != sizeb && !must_create_new_free_block {
+        sizeb = fb.size;
+    }
+    fb.size = sizeb;
+    fb.free = false;
+    fb.free_next = -1;
+    fb.free_prev = -1;
+    return;
+}
+
+fn check_heap_health(){
+    current_block:*HeapBlockHeader = GLOBAL_HEAP.first_free;
+    while true {
+        if current_block.size == 0 {
+            println("hecatombe size 0");
+            exit(33);
+        }
+        if current_block.free_next == 0 {
+            break;
+        }
+        if current_block + current_block.size > current_block.free_next {
+            println("hecatombe wrong size");
+            exit(33);
+        }
+        if current_block.free_next.free_prev != current_block {
+            println("hecatombe bad back pointer");
+            exit(33);
+        }
+        current_block = current_block.free_next;
+    }
+}
+
+fn malloc(sizeb:int) *void {
+    if GLOBAL_HEAP == 0 { GLOBAL_HEAP = init_heap(); }
+    
+    hh:*HeapHeader = GLOBAL_HEAP;
+    fb:*HeapBlockHeader = search_free_block(hh, sizeb);
+    if fb == 0 {
+        // no free space usable (with hard limit)
+        // TODO: expand
+        println("ENOMEM");
+        debug_heap();
+        exit(3);
+    }
+    repurpose_free_block(fb, sizeb);
+    return fb + @size(HeapBlockHeader);
+}
+
+fn mrealloc(ptr:*char, new_size:int) *void {
+    // we use *char to copy byte by byte later
+    h:*HeapBlockHeader = ptr - @size(HeapBlockHeader);
+
+    if h.free {
+        println("double free"); debug_heap(); exit(3);
+    }
+    if new_size <= h.size  { return ptr; }
+
+    new_ptr:*char = malloc(new_size);
+    i:int = 0;
+    while i < h.size {
+        new_ptr[i] = ptr[i];
+        i++;
+    }
+    mfree(ptr);
+    return new_ptr;
+}
+
+fn mfree(h:*HeapBlockHeader) {
+    // TODO: this is a bit inefficient
+    h = &h[-1];
+    h.free = true;
+
+    freeb:*HeapBlockHeader = GLOBAL_HEAP.first_free;
+    to_merge_behind:*HeapBlockHeader = 0;
+    to_merge_front:*HeapBlockHeader = 0;
+    closest_behind:*HeapBlockHeader = 0;
+    closest_front:*HeapBlockHeader = 0;
+    while freeb != 0 {
+        // check if freeb is contiguous with h
+        if freeb < h { closest_behind = freeb; }
+        if freeb > h && closest_front == 0 { closest_front = freeb; }
+        if freeb + @size(HeapBlockHeader) + freeb.size == h {
+            // contiguous from behind
+            to_merge_behind = freeb;
+        }
+        if h + @size(HeapBlockHeader) + h.size == freeb {
+            // contiguous from the front
+            to_merge_front = freeb;
+            break;
+        }
+        freeb = freeb.free_next;
+    }
+
+    if to_merge_front != 0 {
+        h.size = h.size + @size(HeapBlockHeader) + to_merge_front.size;
+        if to_merge_front.free_next != 0 {
+            to_merge_front.free_next.free_prev = h;
+        }
+        h.free_next = to_merge_front.free_next;
+        h.free_prev = to_merge_front.free_prev;
+        if h.free_prev == 0 {
+            GLOBAL_HEAP.first_free = h;
+        }
+        if h.free_prev != 0 {
+            h.free_prev.free_next = h;
+        }
+    }
+    if to_merge_behind != 0 {
+        to_merge_behind.size = to_merge_behind.size + @size(HeapBlockHeader) + h.size;
+        if to_merge_front != 0 {
+            to_merge_behind.free_next = h.free_next;
+            if to_merge_front.free_next != 0 {
+                to_merge_front.free_next.free_prev = to_merge_behind;
+            }
+        }
+        h = to_merge_behind;
+    }
+
+    if to_merge_front == 0 
+    && to_merge_behind == 0 {
+        must_be_first:bool = GLOBAL_HEAP.first_free > h;
+        if must_be_first {
+            h.free_next = GLOBAL_HEAP.first_free;
+            GLOBAL_HEAP.first_free.free_prev = h;
+            h.free_prev = 0;
+            GLOBAL_HEAP.first_free = h;
+        }
+        if !must_be_first {
+            if closest_behind == 0 { exit(42); }
+            closest_behind.free_next = h;
+            h.free_prev = closest_behind;
+            
+            h.free_next = closest_front;
+            if h.free_next != 0 {
+                h.free_next.free_prev = h;
+            }
+        }
+    }
+}
+
+//// DEBUG /////
+fn fmt_hexd(num:int) *char {
+    out:*char = alloc(16+3);
+    hex:*char = "0123456789abcdef";
+    out[0] = '0';
+    out[1] = 'x';
+    i:int=0;
+    shift:int;
+    idx:int;
+    while i < 16 {
+        shift = (15-i) * 4;
+        idx = (num>>shift)&15;
+        out[i+2] = hex[idx];
+        i++;
+    }
+    out[16+3] = '\0';
+    return out;
+}
+fn fmt_decd(num:int) *char {
+    out:*char = alloc(21);
+    idx:int = 0;
+    if num < 0 {
+        out[idx++] = '-';
+        num = -num;
+    }
+    if num == 0 {
+        out[0] = '0';
+        out[1] = '\0';
+        return out;
+    }
+    start:int = idx;
+    while num != 0 {
+        mod:int = num % 10;
+        if mod == 0 { out[idx] = '0'; }
+        if mod == 1 { out[idx] = '1'; }
+        if mod == 2 { out[idx] = '2'; }
+        if mod == 3 { out[idx] = '3'; }
+        if mod == 4 { out[idx] = '4'; }
+        if mod == 5 { out[idx] = '5'; }
+        if mod == 6 { out[idx] = '6'; }
+        if mod == 7 { out[idx] = '7'; }
+        if mod == 8 { out[idx] = '8'; }
+        if mod == 9 { out[idx] = '9'; }
+        idx++;
+        num = num / 10;
+    }
+    end:int = idx-1;
+    while start < end {
+        aux:char = out[start];
+        out[start++] = out[end];
+        out[end--] = aux;
+    }
+    out[idx] = '\0';
+    return out;
+}
+
+fn debug_block(h:*HeapBlockHeader) {
+    print("\nBLOCK:  ");
+    println(fmt_hexd(h));
+    print("\tsize: ");
+    println(fmt_decd(h.size));
+    print("\tprev: ");
+    println(fmt_hexd(h.free_prev));
+    print("\tnext: ");
+    println(fmt_hexd(h.free_next));
+    print("\tfree: ");
+    if h.free { println("true"); }
+    if !h.free { println("false"); }
+}
+
+fn debug_heap() {
+    print("\nGLOBAL_HEAP:  ");
+    println(fmt_hexd(GLOBAL_HEAP));
+    print("first_free:   ");
+    println(fmt_hexd(GLOBAL_HEAP.first_free));
+
+    freeb:*HeapBlockHeader = GLOBAL_HEAP.first_free;
+    while freeb != 0 {
+        print("\nfree block:   ");
+        println(fmt_hexd(freeb));
+        print("\tsize: ");
+        println(fmt_decd(freeb.size));
+        print("\tprev: ");
+        println(fmt_hexd(freeb.free_prev));
+        print("\tnext: ");
+        println(fmt_hexd(freeb.free_next));
+        print("\tfree: ");
+        if freeb.free { println("true"); }
+        if !freeb.free { println("false"); }
+        freeb = freeb.free_next;
+    }
+    return;
+}

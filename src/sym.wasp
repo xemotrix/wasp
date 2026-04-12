@@ -74,7 +74,7 @@ fn size_of_type(t:Type) int {
 fn sym_add_type(ts:TypeStructDef) {
     if TT.len >= TT.cap {
         TT.cap = TT.cap * 2;
-        TT.structs = realloc(TT.structs, TT.cap * @size(TypeStructDef));
+        TT.structs = mrealloc(TT.structs, TT.cap * @size(TypeStructDef));
     }
     ts.sizeb = -1; // mark it as unknown for now
     TT.structs[TT.len++] = ts;
@@ -149,7 +149,7 @@ fn sym_compute_type_sizes() {
 fn sym_push_frame() {
     if SSS.len >= SSS.cap {
         SSS.cap = SSS.cap*2;
-        SSS.frames = realloc(SSS.frames, SSS.cap * @size(SSSFrame));
+        SSS.frames = mrealloc(SSS.frames, SSS.cap * @size(SSSFrame));
     }
     new_frame:*SSSFrame = &SSS.frames[SSS.len++];
     new_frame.cap = 16;
@@ -161,7 +161,7 @@ fn sym_push_frame() {
     if SSS.len != 1 {
         new_frame.sizeb = SSS.frames[SSS.len - 2].sizeb;
     }
-    new_frame.entries = alloc(new_frame.cap * @size(SSSEntry));
+    new_frame.entries = malloc(new_frame.cap * @size(SSSEntry));
 }
 
 fn sym_pop_frame() {
@@ -170,26 +170,26 @@ fn sym_pop_frame() {
 }
 
 fn sym_init_tables() {
-    ST = alloc(@size(SymT));
+    ST = malloc(@size(SymT));
     ST.cap = 32;
     ST.len = 0;
-    ST.symbols = alloc(ST.cap * @size(Symbol));
+    ST.symbols = malloc(ST.cap * @size(Symbol));
 
-    TT = alloc(@size(TypeTable));
+    TT = malloc(@size(TypeTable));
     TT.cap = 32;
     TT.len = 0;
-    TT.structs = alloc(TT.cap * @size(TypeStructDef));
+    TT.structs = malloc(TT.cap * @size(TypeStructDef));
 
-    SSS = alloc(@size(ScopedSymbolStack));
+    SSS = malloc(@size(ScopedSymbolStack));
     SSS.cap = 32;
     SSS.len = 0;
-    SSS.frames = alloc(SSS.cap * @size(SSSFrame));
+    SSS.frames = malloc(SSS.cap * @size(SSSFrame));
 }
 
 fn new_sym() *Symbol {
     if ST.len >= ST.cap {
         ST.cap = ST.cap*2;
-        ST.symbols = realloc(ST.symbols, ST.cap * @size(Symbol));
+        ST.symbols = mrealloc(ST.symbols, ST.cap * @size(Symbol));
     }
     sym:*Symbol = &ST.symbols[ST.len++];
     return sym;
@@ -218,7 +218,7 @@ fn new_entry() *SSSEntry {
     f:*SSSFrame = current_frame();
     if f.len >= f.cap {
         f.cap = f.cap*2;
-        f.entries = realloc(f.entries, f.cap * @size(SSSEntry));
+        f.entries = mrealloc(f.entries, f.cap * @size(SSSEntry));
     }
     e:*SSSEntry = &f.entries[f.len++];
     return e;

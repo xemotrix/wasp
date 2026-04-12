@@ -212,7 +212,7 @@ fn ast_new_base_type(bt:int) Type {
 fn ast_new_ptr_type(inner_t:Type) Type {
     t:Type;
     t.kind = TYPE_KIND_PTR;
-    t.ptr = alloc(@size(Type));
+    t.ptr = malloc(@size(Type));
     *t.ptr = inner_t;
     return t;
 }

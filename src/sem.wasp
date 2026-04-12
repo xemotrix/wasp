@@ -33,7 +33,7 @@ fn tc_call(c:*AST_Expr_Call) Type {
         write(c.fun_expr.varr.name, c.fun_expr.varr.name_len); println("");
         error("function arg number mismatch");
     }
-    c.temporary_sym_idxs = alloc(c.args_len * 8);
+    c.temporary_sym_idxs = malloc(c.args_len * @size(int));
     i:int = 0;
     while i < c.args_len {
         arg:*AST_Expr = &c.args[i];
@@ -418,7 +418,7 @@ fn tc_fun(fun:*AST_Def_Fun) {
         ret_stmt.returnn.expr = 0;
         if b.stmt_cap <= b.stmts_len {
             b.stmt_cap++;
-            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
+            b.stmts = mrealloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
         b.stmts[b.stmts_len++] = ret_stmt;
     }

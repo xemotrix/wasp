@@ -55,7 +55,7 @@ fn parse_lit_char(t:Token) AST_Expr {
 fn parse_lit_string(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_STRING;
-    e.lit_string.text = alloc(t.text_len - 1);
+    e.lit_string.text = malloc(t.text_len - 1);
 
     dest_i:int = 0;
     i:int = 1;
@@ -123,22 +123,24 @@ fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
     expr.kind = AST_EXPR_CALL;
 
     assert(fun_expr.kind == AST_EXPR_VAR || fun_expr.kind == AST_EXPR_BUILTIN);
-    expr.call.fun_expr = alloc(@size(AST_Expr));
+    expr.call.fun_expr = malloc(@size(AST_Expr));
     *expr.call.fun_expr = fun_expr;
 
     t = token_next();
     if t.type != TOK_LPAREN { error("Expected '('"); }
 
     args_cap:int = 2;
-    expr.call.args = alloc(args_cap * @size(AST_Expr));
+
+    expr.call.args = malloc(args_cap * @size(AST_Expr));
     expr.call.args_len = 0;
     while true {
         t = token_next();
         if t.type == TOK_RPAREN { break; }
         if t.type == TOK_EOF { error("Expected ')' or expression but found EOF"); }
+
         if expr.call.args_len >= args_cap {
             args_cap = args_cap * 2;
-            expr.call.args = realloc(expr.call.args, args_cap * @size(AST_Expr));
+            expr.call.args = mrealloc(expr.call.args, args_cap * @size(AST_Expr));
         }
 
         expr.call.args[expr.call.args_len++] = parse_expr(t);
@@ -213,7 +215,7 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
         left.kind = AST_EXPR_UNOP;
         left.unop.op = t.type;
         t = token_next();
-        left.unop.expr = alloc(@size(AST_Expr));
+        left.unop.expr = malloc(@size(AST_Expr));
         *left.unop.expr = parse_expr_with_prec(t, pre_prec);
     }
 
@@ -236,10 +238,10 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
                 token_next();
                 t = token_next();
                 new_res.kind = AST_EXPR_BINOP;
-                new_res.binop.left = alloc(@size(AST_Expr));
+                new_res.binop.left = malloc(@size(AST_Expr));
                 *new_res.binop.left = res;
                 new_res.binop.op = op.type;
-                new_res.binop.right = alloc(@size(AST_Expr));
+                new_res.binop.right = malloc(@size(AST_Expr));
                 *new_res.binop.right = parse_expr(t);
                 t = token_next();
                 if t.type != TOK_RSQBR { error("Missing closing ']'"); }
@@ -250,7 +252,7 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
             t = token_next();
             new_res.kind = AST_EXPR_UNOP;
             new_res.unop.op = t.type;
-            new_res.unop.expr = alloc(@size(AST_Expr));
+            new_res.unop.expr = malloc(@size(AST_Expr));
             *new_res.unop.expr = res;
             res = new_res;
             continue;
@@ -264,12 +266,12 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
             t = token_next();
             new_res:AST_Expr;
             new_res.kind = AST_EXPR_BINOP;
-            new_res.binop.left = alloc(@size(AST_Expr));
+            new_res.binop.left = malloc(@size(AST_Expr));
             *new_res.binop.left = res;
             new_res.binop.op = t.type;
 
             t = token_next();
-            new_res.binop.right = alloc(@size(AST_Expr));
+            new_res.binop.right = malloc(@size(AST_Expr));
             *new_res.binop.right = parse_expr_with_prec(t, inf_prec);
             res = new_res;
             continue;
@@ -335,7 +337,7 @@ fn parse_stmt_define(t:Token) AST_Stmt {
     }
     if t.type != TOK_EQUALS { error("Expected '=' after type in definition"); }
     t = token_next();
-    stmt.define.expr = alloc(@size(AST_Expr));
+    stmt.define.expr = malloc(@size(AST_Expr));
     *stmt.define.expr = parse_expr(t);
     t = token_next();
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
@@ -377,10 +379,10 @@ fn parse_stmt_while(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_WHILE;
     t = token_next();
-    stmt.whilee.cond = alloc(@size(AST_Expr));
+    stmt.whilee.cond = malloc(@size(AST_Expr));
     *stmt.whilee.cond = parse_expr(t);
     t = token_next();
-    stmt.whilee.block = alloc(@size(Block));
+    stmt.whilee.block = malloc(@size(Block));
     *stmt.whilee.block = parse_block(t);
     return stmt;
 }
@@ -389,9 +391,9 @@ fn parse_stmt_if(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_IF;
     t = token_next();
-    stmt.iff.cond = alloc(@size(AST_Expr));
+    stmt.iff.cond = malloc(@size(AST_Expr));
     *stmt.iff.cond = parse_expr(t);
-    stmt.iff.block = alloc(@size(Block));
+    stmt.iff.block = malloc(@size(Block));
     t = token_next();
     *stmt.iff.block = parse_block(t);
     return stmt;
@@ -405,7 +407,7 @@ fn parse_stmt_return(t:Token) AST_Stmt {
         stmt.returnn.expr = 0;
         return stmt;
     }
-    stmt.returnn.expr = alloc(@size(AST_Expr));
+    stmt.returnn.expr = malloc(@size(AST_Expr));
     *stmt.returnn.expr = parse_expr(t);
     t = token_next();
     if t.type != TOK_SEMICOLON { error("Expected ';'"); }
@@ -451,14 +453,14 @@ fn parse_block(t:Token) Block {
     b:Block;
     b.stmts_len = 0;
     b.stmt_cap = 4;
-    b.stmts = alloc(b.stmt_cap * @size(AST_Stmt));
+    b.stmts = malloc(b.stmt_cap * @size(AST_Stmt));
     while true {
         t = token_next();
         if t.type == TOK_RCURLY { break; }
         if t.type == TOK_EOF { error("Expected '}' or statement"); }
         if b.stmts_len >= b.stmt_cap {
             b.stmt_cap = b.stmt_cap * 2;
-            b.stmts = realloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
+            b.stmts = mrealloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
         }
         b.stmts[b.stmts_len++] = parse_stmt(t);
     }
@@ -481,10 +483,10 @@ fn parse_def_fun(t:Token) AST_Def {
     // parse args
     arg_names_cap:int = 2;
     fun.num_args = 0;
-    fun.arg_names = alloc(arg_names_cap * 8);
-    fun.arg_name_lens = alloc(arg_names_cap * 8);
-    fun.arg_types = alloc(arg_names_cap * @size(Type));
-    fun.arg_sym_idxs = alloc(arg_names_cap * 8);
+    fun.arg_names = malloc(arg_names_cap * @size(*char));
+    fun.arg_name_lens = malloc(arg_names_cap * @size(int));
+    fun.arg_types = malloc(arg_names_cap * @size(Type));
+    fun.arg_sym_idxs = malloc(arg_names_cap * @size(int));
 
     while true {
         t = token_next();
@@ -493,10 +495,10 @@ fn parse_def_fun(t:Token) AST_Def {
         if t.type != TOK_IDEN { error("Expected Identifier"); }
         if fun.num_args >= arg_names_cap {
             arg_names_cap = arg_names_cap*2;
-            fun.arg_names = realloc(fun.arg_names, arg_names_cap * 8);
-            fun.arg_name_lens = realloc(fun.arg_name_lens, arg_names_cap * 8);
-            fun.arg_types = realloc(fun.arg_types, arg_names_cap * @size(Type));
-            fun.arg_sym_idxs = realloc(fun.arg_sym_idxs, arg_names_cap * @size(Type));
+            fun.arg_names = mrealloc(fun.arg_names, arg_names_cap * @size(*char));
+            fun.arg_name_lens = mrealloc(fun.arg_name_lens, arg_names_cap * @size(int));
+            fun.arg_types = mrealloc(fun.arg_types, arg_names_cap * @size(Type));
+            fun.arg_sym_idxs = mrealloc(fun.arg_sym_idxs, arg_names_cap * @size(int));
         }
         fun.arg_names[fun.num_args] = t.text;
         fun.arg_name_lens[fun.num_args] = t.text_len;
@@ -561,17 +563,17 @@ fn parse_def_struct(t:Token) AST_Def {
     if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
 
     cap:int = 2;
-    def.stru.field_names = alloc(cap * 8);
-    def.stru.field_name_lens = alloc(cap * 8);
-    def.stru.types = alloc(cap * @size(Type));
+    def.stru.field_names = malloc(cap * @size(*char));
+    def.stru.field_name_lens = malloc(cap * @size(int));
+    def.stru.types = malloc(cap * @size(Type));
 
     n_args:int  = 0;
     while (true) {
         if n_args >= cap {
             cap = cap * 2;
-            def.stru.field_names = realloc(def.stru.field_names, cap*@size(*char));
-            def.stru.field_name_lens = realloc(def.stru.field_name_lens, cap*@size(int));
-            def.stru.types = realloc(def.stru.types, cap * @size(Type));
+            def.stru.field_names = mrealloc(def.stru.field_names, cap*@size(*char));
+            def.stru.field_name_lens = mrealloc(def.stru.field_name_lens, cap*@size(int));
+            def.stru.types = mrealloc(def.stru.types, cap*@size(Type));
         }
         t = token_next();
         if t.type == TOK_RCURLY { break; }
@@ -611,7 +613,7 @@ fn parse_def(t:Token) AST_Def {
 fn parse() AST{
     ast:AST;
     cap:int = 2;
-    ast.defs = alloc(cap * @size(AST_Def));
+    ast.defs = malloc(cap * @size(AST_Def));
     ast.defs_len = 0;
     t:Token;
     while true {
@@ -619,7 +621,7 @@ fn parse() AST{
         if t.type == TOK_EOF { break; }
         if ast.defs_len >= cap { 
             cap = cap * 2;
-            ast.defs = realloc(ast.defs, cap * @size(AST_Def));
+            ast.defs = mrealloc(ast.defs, cap * @size(AST_Def));
         }
         ast.defs[ast.defs_len++] = parse_def(t);
     }

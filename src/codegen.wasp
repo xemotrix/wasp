@@ -23,7 +23,7 @@ fn write_to_disk(fd:int) {
 fn write_arbitrary_n(s:*char, len:int) {
     if CODE_BUFFER.len + len >= CODE_BUFFER.cap {
         CODE_BUFFER.cap = CODE_BUFFER.cap * 2;
-        CODE_BUFFER.text = realloc(CODE_BUFFER.text,
+        CODE_BUFFER.text = mrealloc(CODE_BUFFER.text,
                                    CODE_BUFFER.cap * @size(CodeBuffer));
     }
     i:int = 0;
@@ -38,7 +38,7 @@ fn write_arbitrary(s:*char){
 }
 
 fn write_char(c:char){
-    bfr:*char = alloc(3);
+    bfr:*char = malloc(3);
     bfr[0] = c;
     len:int = 1;
     if c <= '\r'{
@@ -48,6 +48,7 @@ fn write_char(c:char){
         if c == '\0' { bfr = "\0"; }
         len=2;
     }
+    bfr[len] = '\0';
     if c == '"' { bfr = "\""; }
     write_arbitrary_n(bfr, len);
 }
@@ -97,7 +98,7 @@ fn push_s(size:*char, val:*char) {
     write_ins3("push", size, val);
 }
 fn calln(val:*char, len:int) { 
-    bfr:*char = alloc(len+1);
+    bfr:*char = malloc(len+1);
     i:int = 0;
     while i < len {
         bfr[i] = val[i];
@@ -105,7 +106,7 @@ fn calln(val:*char, len:int) {
     }
     bfr[len] = '\0';
     call(bfr); 
-    free(bfr);
+    mfree(bfr);
 }
 fn call(val:*char) { write_ins2("call", val); }
 fn sete(val:*char) { write_ins2("sete", val); }
@@ -156,7 +157,7 @@ fn while_end_lbl(num:int) *char {
 }
 
 fn glbl_lbl(val:*char, len:int) *char {
-    bfr:*char = alloc(256);
+    bfr:*char = malloc(256);
     i:int = 0;
     while i < len {
         if (val[i] == '\0') { break; }
@@ -248,15 +249,15 @@ var CG_LBL_CTR:int = 0;
 var CG_STRS:*CG_StrMap = 0;
 
 fn cg_init_maps() {
-    CG_STRS = alloc(@size(CG_StrMap));
+    CG_STRS = malloc(@size(CG_StrMap));
     CG_STRS.len = 0;
     CG_STRS.cap = 4;
-    CG_STRS.strings = alloc(CG_STRS.cap * @size(CG_StrEntry));
+    CG_STRS.strings = malloc(CG_STRS.cap * @size(CG_StrEntry));
 
-    CODE_BUFFER = alloc(@size(CodeBuffer));
+    CODE_BUFFER = malloc(@size(CodeBuffer));
     CODE_BUFFER.len = 0;
     CODE_BUFFER.cap = 1024 * 1024;
-    CODE_BUFFER.text = alloc(CODE_BUFFER.cap * @size(char));
+    CODE_BUFFER.text = malloc(CODE_BUFFER.cap * @size(char));
 }
 
 fn cg_lbl() int { 
@@ -265,16 +266,16 @@ fn cg_lbl() int {
 }
 fn save_const_string(s:AST_Expr_Lit_String) int {
     if CG_STRS == 0 {
-        CG_STRS = alloc(24);
+        CG_STRS = malloc(24);
         CG_STRS.len = 0;
         CG_STRS.cap = 32;
-        CG_STRS.strings = alloc(CG_STRS.cap * 16);
+        CG_STRS.strings = malloc(CG_STRS.cap * 16);
     }
     
     lbl:int = cg_lbl();
     if CG_STRS.len >= CG_STRS.cap {
         CG_STRS.cap = CG_STRS.cap*2;
-        CG_STRS.strings = realloc(CG_STRS.strings, CG_STRS.cap * 24);
+        CG_STRS.strings = mrealloc(CG_STRS.strings, CG_STRS.cap * 24);
     }
     e:CG_StrEntry;
     e.text = s.text;
@@ -715,7 +716,7 @@ fn cg_expr(expr:AST_Expr) {
 }
 
 fn cg_label_n(str_lbl:*char, len:int) {
-    aux:*char = alloc(len+1);
+    aux:*char = malloc(len+1);
     i:int = 0;
     while i < len {
         aux[i] = str_lbl[i];
@@ -723,7 +724,7 @@ fn cg_label_n(str_lbl:*char, len:int) {
     }
     aux[i] = '\0';
     write_lbl(strcat(aux, ":"));
-    free(aux);
+    mfree(aux);
     return;
 }
 
@@ -970,10 +971,11 @@ fn cg_data_def(d:AST_Stmt_Declare) {
         if d.t.base == TYPE_CHAR {
             glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
             glbl = strcat(glbl, ": db '");
-            bfr:*char = alloc(4);
+            bfr:*char = malloc(4);
             bfr[0] = d.expr.lit_char.value;
+            bfr[1] = '\0';
             glbl = strcat(glbl, bfr);
-            free(bfr);
+            mfree(bfr);
             glbl = strcat(glbl, "'");
             write_ins(glbl);
             return;

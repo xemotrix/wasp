@@ -47,8 +47,9 @@ fn render_lit_char(l:AST_Expr_Lit_Char) {
     if l.value == '\r' {print("%r"); escaped=true;}
     if l.value == '\'' {print("'"); escaped=true;}
     if !escaped {
-        bfr:*char = alloc(2);
+        bfr:*char = malloc(2);
         bfr[0]=l.value;
+        bfr[1]='\0';
         print(bfr);
     }
     print("')");

@@ -8,6 +8,7 @@ include "src/render_ast.wasp"
 include "src/sym.wasp"
 include "src/sem.wasp"
 include "src/codegen.wasp"
+include "src/mem.wasp"
 
 struct Flags {
     input_file:*char;
@@ -53,11 +54,19 @@ fn main(argc:int, argv:**char) int {
     fl:Flags = parse_flags(argc, argv);
 
     lex(fl.input_file);
+    println("======AFTER lex=======");
+    // debug_heap();
     ast:AST = parse();
-    free(TOKENS.tokens);
+    // debug_heap();
+
     println("finished parsing");
+    mfree(TOKENS.tokens);
+    // println("======AFTER parse=====");
+    // debug_heap();
 
     type_check(&ast);
+    // println("======AFTER typecheck=====");
+    // debug_heap();
     // render_ast(&ast);
     println("finished semantic analysis");
 

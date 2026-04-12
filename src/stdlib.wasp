@@ -110,7 +110,7 @@ fn read_file(fd:int) *char {
         println("Error reading file");
         exit(1);
     }
-    buf:*char = alloc(4096*100);
+    buf:*char = malloc(4096*100);
     to_read:int = 4096;
     chunk_c:int = 0;
     while true {
@@ -126,7 +126,7 @@ fn read_file(fd:int) *char {
 }
 
 fn fmt_dec(num:int) *char {
-    out:*char = alloc(20);
+    out:*char = malloc(21);
     idx:int = 0;
     if num < 0 {
         out[idx++] = '-';
@@ -134,6 +134,7 @@ fn fmt_dec(num:int) *char {
     }
     if num == 0 {
         out[0] = '0';
+        out[1] = '\0';
         return out;
     }
     start:int = idx;
@@ -158,11 +159,12 @@ fn fmt_dec(num:int) *char {
         out[start++] = out[end];
         out[end--] = aux;
     }
+    out[idx] = '\0';
     return out;
 }
 
 fn fmt_hex(num:int) *char {
-    out:*char = alloc(16+3);
+    out:*char = malloc(16+3);
     hex:*char = "0123456789abcdef";
     out[0] = '0';
     out[1] = 'x';
@@ -182,12 +184,13 @@ fn fmt_hex(num:int) *char {
 fn strcat(a:*char, b:*char) *char {
     lena:int = strlen(a);
     lenb:int = strlen(b);
-    new:*char = alloc(lena+lenb);
+    new:*char = malloc(lena+lenb+1);
     ptr:*char = new;
     i:int = 0;
     while i < lena { *(ptr++) = a[i++]; }
     i = 0;
     while i < lenb { *(ptr++) = b[i++]; }
+    *ptr = '\0';
     return new;
 }
 

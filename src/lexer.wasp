@@ -171,14 +171,14 @@ fn lex_include(src:*char) int {
     src++;
 
     cap:int=256;
-    bfr:*char=alloc(cap);
+    bfr:*char=malloc(cap);
 
     i:int = 0;
     while *src != '"' {
         if *src == '\0' { error("expected \" closing include"); }
         if i+1 >= cap { // leave space for the final \0
             cap = cap * 2;
-            bfr = realloc(bfr, cap);
+            bfr = mrealloc(bfr, cap);
         }
         bfr[i++] = *src;
         src++;
@@ -187,6 +187,7 @@ fn lex_include(src:*char) int {
     src++;
 
     lex_file(bfr);
+    mfree(bfr);
     assert(TOKENS.tokens[TOKENS.len-1].type == TOK_EOF);
     TOKENS.len--;
 
@@ -298,7 +299,7 @@ fn lex_file(file_name:*char) {
         if t.type == TOK_SKIP { continue; }
         if TOKENS.len >= TOKENS.cap {
             TOKENS.cap = TOKENS.cap * 2;
-            TOKENS.tokens = realloc(TOKENS.tokens, TOKENS.cap*@size(Token));
+            TOKENS.tokens = mrealloc(TOKENS.tokens, TOKENS.cap*@size(Token));
         }
         TOKENS.tokens[TOKENS.len++] = t;
     }
@@ -306,11 +307,11 @@ fn lex_file(file_name:*char) {
 }
 
 fn lex(file_name:**char) {
-    TOKENS = alloc(@size(TokenTable));
+    TOKENS = malloc(@size(TokenTable));
     TOKENS.len = 0;
     TOKENS.idx = 0;
     TOKENS.cap = 4096;
-    TOKENS.tokens = alloc(TOKENS.cap*@size(Token));
+    TOKENS.tokens = malloc(TOKENS.cap*@size(Token));
 
     lex_file(file_name);
     return;
