@@ -1,3 +1,34 @@
+
+/// mmap basic allocator ///
+
+fn alloc(size:int) int {
+    ptr:*int = mmap(size+8);
+    *ptr = size;
+    return ptr+8;
+}
+
+fn realloc(old_ptr:*int, new_size:int) int {
+    old_size:int = old_ptr[-1];
+    if new_size < old_size {
+        return old_ptr; // memory is cheap lmao
+    }
+    new_ptr:*int = alloc(new_size);
+    i:int = 0;
+    while i*8 < old_size {
+        new_ptr[i] = old_ptr[i];
+        i++;
+    }
+    if new_ptr != old_ptr { free(old_ptr); }
+    return new_ptr;
+}
+
+fn free(ptr:*int) int {
+    size:int = ptr[-1];
+    return munmap(ptr-8, size+8);
+}
+
+/// freelist heap allocator ///
+
 struct HeapHeader {
     first_free:*HeapBlockHeader;
 }
