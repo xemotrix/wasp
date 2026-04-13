@@ -253,8 +253,8 @@ fn sym_add_varconst(def:AST_Stmt_Declare, kind:int) int {
 
     assert(SSS.len == 1);
     e:*SSSEntry = new_entry();
-    e.name = def.var_name;
-    e.name_len = def.var_name_len;
+    e.name = def.var_name.data;
+    e.name_len = def.var_name.len;
     e.sym_idx = idx;
 
     return idx;

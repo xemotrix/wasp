@@ -757,7 +757,7 @@ fn cg_lvalue(expr:AST_Expr) int {
             return s.sizeb;
         }
         if s.kind == SYM_KIND_VAR {
-            push_s("QWORD", glbl_lbl(s.def.var_name,s.def.var_name_len));
+            push_s("QWORD", glbl_lbl(s.def.var_name.data,s.def.var_name.len));
             return s.sizeb;
         }
         if s.kind == SYM_KIND_CONST {
@@ -796,7 +796,7 @@ fn cg_stmt(stmt:AST_Stmt, break_lbl:*char, continue_lbl:*char) {
         s:*Symbol = sym_search(def.sym_idx);
 
         write_arbitrary("\t; define ");
-        write_arbitrary_n(def.var_name, def.var_name_len);
+        write_arbitrary_n(def.var_name.data, def.var_name.len);
         write_arbitrary("\n");
 
         if (def.expr == 0) { return; }
@@ -946,7 +946,7 @@ fn cg_fun_def(fun:AST_Def_Fun) {
 
 fn cg_data_def(d:AST_Stmt_Declare) {
     if (d.t.kind == TYPE_KIND_PTR) {
-        glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+        glbl:*char = glbl_lbl(d.var_name.data, d.var_name.len);
         glbl = strcat(glbl, ": dq ");
         glbl = strcat(glbl, fmt_dec(d.expr.lit_int.value));
         write_ins(glbl);
@@ -955,21 +955,21 @@ fn cg_data_def(d:AST_Stmt_Declare) {
 
     if (d.t.kind == TYPE_KIND_BASE) {
         if d.t.base == TYPE_BOOL {
-            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl:*char = glbl_lbl(d.var_name.data, d.var_name.len);
             glbl = strcat(glbl, ": db ");
             glbl = strcat(glbl, fmt_dec(d.expr.lit_bool.value));
             write_ins(glbl);
             return;
         }
         if d.t.base == TYPE_INT {
-            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl:*char = glbl_lbl(d.var_name.data, d.var_name.len);
             glbl = strcat(glbl, ": dq ");
             glbl = strcat(glbl, fmt_dec(d.expr.lit_int.value));
             write_ins(glbl);
             return;
         }
         if d.t.base == TYPE_CHAR {
-            glbl:*char = glbl_lbl(d.var_name, d.var_name_len);
+            glbl:*char = glbl_lbl(d.var_name.data, d.var_name.len);
             glbl = strcat(glbl, ": db '");
             bfr:*char = malloc(4);
             bfr[0] = d.expr.lit_char.value;

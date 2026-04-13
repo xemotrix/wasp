@@ -310,8 +310,7 @@ fn parse_type(t:Token) Type {
 fn parse_stmt_define(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_DEFINE;
-    stmt.define.var_name = t.text.data;
-    stmt.define.var_name_len = t.text.len;
+    stmt.define.var_name = t.text;
 
     token_next(); // skip the ':' (should already be checked for)
     t = token_next();

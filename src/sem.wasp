@@ -290,7 +290,7 @@ fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
     if stmt.kind == AST_STMT_DEFINE {
         decl = &stmt.define;
         sym_fill_index_if_struct(&decl.t);
-        decl.sym_idx = sym_add_svar(decl.t, decl.var_name, decl.var_name_len);
+        decl.sym_idx = sym_add_svar(decl.t, decl.var_name.data, decl.var_name.len);
         if (decl.expr == 0) { return; }
         tc_expr(decl.expr);
         sym_fill_index_if_struct(&decl.expr.ty);

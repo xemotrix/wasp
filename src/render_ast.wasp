@@ -161,7 +161,7 @@ fn render_expr(e:AST_Expr) {
 fn render_const_def(d:AST_Stmt_Declare) {
     ind();
     print("(CONST '");
-    write(d.var_name, d.var_name_len);
+    write(d.var_name.data, d.var_name.len);
     print("'");
     IND++;
     render_type(d.t);
@@ -173,7 +173,7 @@ fn render_const_def(d:AST_Stmt_Declare) {
 fn render_var_def(d:AST_Stmt_Declare) {
     ind();
     print("(VAR '");
-    write(d.var_name, d.var_name_len);
+    write(d.var_name.data, d.var_name.len);
     print("'");
     IND++;
     render_type(d.t);
@@ -185,7 +185,7 @@ fn render_var_def(d:AST_Stmt_Declare) {
 fn render_define(d:AST_Stmt_Declare) {
     ind();
     print("(DEFINE '");
-    write(d.var_name, d.var_name_len);
+    write(d.var_name.data, d.var_name.len);
     print("'");
     IND++;
     render_type(d.t);
