@@ -112,12 +112,10 @@ fn sym_compute_type_sizes() {
                 t:Type = TT.structs[t_i].types[f_i];
                 st:TypeStructDef;
                 if t.kind == TYPE_KIND_PTR {
-                    println("\ttype field ptr");
                     size_accum = size_accum+8;
                     fields_finished++;
                 }
                 if t.kind == TYPE_KIND_BASE {
-                    println("\ttype field base");
                     if t.base == TYPE_VOID { error("can't compute the size of void"); }
                     if t.base == TYPE_BOOL { size_accum++; }
                     if t.base == TYPE_INT { size_accum = size_accum+8; }
@@ -125,7 +123,6 @@ fn sym_compute_type_sizes() {
                     fields_finished++;
                 }
                 if t.kind == TYPE_KIND_STRUCT {
-                    print("\ttype field '"); write(t.struct_name.name, t.struct_name.name_len); println("'");
                     st = sym_search_type_idx(sym_search_type(
                         t.struct_name.name, t.struct_name.name_len));
                     if st.sizeb == -1 { f_i++; continue; }
