@@ -19,9 +19,7 @@ fn tc_call(c:*AST_Expr_Call) Type {
     if c.fun_expr.kind == AST_EXPR_BUILTIN { return tc_builtin_call(c); }
 
     assert(c.fun_expr.kind == AST_EXPR_VAR);
-    fun_name:*char = c.fun_expr.varr.name.data;
-    fun_name_len:int = c.fun_expr.varr.name.len;
-    sym_idx:int = sym_stack_search(fun_name, fun_name_len);
+    sym_idx:int = sym_stack_search(c.fun_expr.varr.name);
     s:*Symbol = sym_search(sym_idx);
     c.fun_expr.varr.sym_idx = sym_idx;
     if s.kind != SYM_KIND_FUN { 
@@ -48,6 +46,8 @@ fn tc_call(c:*AST_Expr_Call) Type {
         sym_fill_index_if_struct(&f.arg_types[i]);
         sym_fill_index_if_struct(&c.args[i].ty);
         if !tc_can_unify(f.arg_types[i], c.args[i].ty) { 
+            fun_name:*char = c.fun_expr.varr.name.data;
+            fun_name_len:int = c.fun_expr.varr.name.len;
             write(fun_name, fun_name_len); println("");
             error("Expected argument type mismatch"); 
         }
@@ -214,7 +214,7 @@ fn tc_unop(unop:*AST_Expr_Unop) Type {
 }
 
 fn tc_var(varr:*AST_Expr_Var) Type {
-    sym_idx:int = sym_stack_search(varr.name.data, varr.name.len);
+    sym_idx:int = sym_stack_search(varr.name);
     sym:*Symbol = sym_search(sym_idx);
     varr.sym_idx = sym_idx;
     return sym.t;
@@ -290,7 +290,7 @@ fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
     if stmt.kind == AST_STMT_DEFINE {
         decl = &stmt.define;
         sym_fill_index_if_struct(&decl.t);
-        decl.sym_idx = sym_add_svar(decl.t, decl.var_name.data, decl.var_name.len);
+        decl.sym_idx = sym_add_svar(decl.t, decl.var_name);
         if (decl.expr == 0) { return; }
         tc_expr(decl.expr);
         sym_fill_index_if_struct(&decl.expr.ty);
@@ -402,8 +402,7 @@ fn tc_fun(fun:*AST_Def_Fun) {
     i:int = 0;
     while i < fun.num_args {
         sym_fill_index_if_struct(&fun.arg_types[i]);
-        fun.arg_sym_idxs[i] = sym_add_svar_arg(
-            fun.arg_types[i], fun.arg_names[i].data, fun.arg_names[i].len);
+        fun.arg_sym_idxs[i] = sym_add_svar_arg(fun.arg_types[i], fun.arg_names[i]);
         i++;
     }
 

@@ -14,40 +14,39 @@ struct Symbol {
 }
 
 struct SymT {
-  symbols:*Symbol;
-  len:int;
-  cap:int;
+    symbols:*Symbol;
+    len:int;
+    cap:int;
 }
 
 struct SSSEntry {
-  name:*char;
-  name_len:int;
-  sym_idx:int;
+    name:String;
+    sym_idx:int;
 }
 
 struct SSSFrame {
-  entries:*SSSEntry;
-  sizeb:int;
-  len:int;
-  cap:int;
-  sret_offset:int;
+    entries:*SSSEntry;
+    sizeb:int;
+    len:int;
+    cap:int;
+    sret_offset:int;
 }
 
 struct ScopedSymbolStack {
-  frames:*SSSFrame;
-  len:int;
-  cap:int;
+    frames:*SSSFrame;
+    len:int;
+    cap:int;
 }
 
 struct TypeTable {
-  structs:*TypeStructDef;
-  len:int;
-  cap:int;
+    structs:*TypeStructDef;
+    len:int;
+    cap:int;
 }
 
 fn to_stack_size(size:int) int {
-  // rounds up to multiples of 8
-  return (size + 7) & ~7;
+    // rounds up to multiples of 8
+    return (size + 7) & ~7;
 }
 
 var TT:*TypeTable = 0;
@@ -84,15 +83,11 @@ fn sym_search_type_idx(idx:int) TypeStructDef {
     return TT.structs[idx]; 
 }
 
-fn sym_search_type(name:*char, name_len:int) int {
-    name_str:String;
-    name_str.data = name;
-    name_str.len = name_len;
-
+fn sym_search_type(name:String) int {
     i:int = 0;
     while i < TT.len {
         t:TypeStructDef = TT.structs[i];
-        if string_eq(t.name, name_str) {
+        if string_eq(t.name, name) {
             return i;
         }
         i++;
@@ -127,8 +122,7 @@ fn sym_compute_type_sizes() {
                     fields_finished++;
                 }
                 if t.kind == TYPE_KIND_STRUCT {
-                    st = sym_search_type_idx(sym_search_type(
-                        t.struct_name.name.data, t.struct_name.name.len));
+                    st = sym_search_type_idx(sym_search_type(t.struct_name.name));
                     if st.sizeb == -1 { f_i++; continue; }
                     size_accum = size_accum+st.sizeb;
                     fields_finished++;
@@ -232,8 +226,7 @@ fn new_entry() *SSSEntry {
 fn sym_fill_index_if_struct(t:*Type) {
     if t.kind == TYPE_KIND_BASE { return; }
     if t.kind ==  TYPE_KIND_STRUCT {
-        t.struct_name.sym_idx = sym_search_type(t.struct_name.name.data, 
-                                                t.struct_name.name.len);
+        t.struct_name.sym_idx = sym_search_type(t.struct_name.name);
         return;
     }
     if t.kind == TYPE_KIND_PTR {
@@ -253,8 +246,7 @@ fn sym_add_varconst(def:AST_Stmt_Declare, kind:int) int {
 
     assert(SSS.len == 1);
     e:*SSSEntry = new_entry();
-    e.name = def.var_name.data;
-    e.name_len = def.var_name.len;
+    e.name = def.var_name;
     e.sym_idx = idx;
 
     return idx;
@@ -275,8 +267,7 @@ fn sym_add_fun(fun:*AST_Def_Fun) int {
     sym.fun = fun;
 
     e:*SSSEntry = new_entry();
-    e.name = fun.name.data;
-    e.name_len = fun.name.len;
+    e.name = fun.name;
     e.sym_idx = idx;
     return idx;
 }
@@ -305,7 +296,7 @@ fn sym_add_temporary(t:Type) int {
     return sym_create_sym(t, SYM_KIND_STACK); 
 }
 
-fn sym_add_svar_arg(t:Type, name:*char, name_len:int) int {
+fn sym_add_svar_arg(t:Type, name:String) int {
     idx:int = ST.len;
     sym:*Symbol = new_sym();
     sym_fill_index_if_struct(&t);
@@ -320,16 +311,14 @@ fn sym_add_svar_arg(t:Type, name:*char, name_len:int) int {
     
     e:*SSSEntry = new_entry();
     e.name = name;
-    e.name_len = name_len;
     e.sym_idx = idx;
     return idx;
 }
 
-fn sym_add_svar(t:Type, name:*char, name_len:int) int {
+fn sym_add_svar(t:Type, name:String) int {
     idx:int = sym_create_sym(t, SYM_KIND_STACK);
     e:*SSSEntry = new_entry();
     e.name = name;
-    e.name_len = name_len;
     e.sym_idx = idx;
     return idx;
 }
@@ -338,21 +327,20 @@ fn sym_search(idx:int) *Symbol {
     return &ST.symbols[idx]; 
 }
 
-fn sym_stack_search(name:*char, name_len:int) int {
+fn sym_stack_search(name:String) int {
     i:int = SSS.len - 1;
     while i >= 0 {
         f:SSSFrame = SSS.frames[i];
         j:int = f.len -1;
         while j >= 0 {
-            if name_len == f.entries[j].name_len
-            && streq(name, f.entries[j].name, name_len) {
+            if string_eq(name, f.entries[j].name) {
                 return f.entries[j].sym_idx;
             }
             j=j-1;
         }
         i=i-1;
     }
-    write(name, name_len);
+    write(name.data, name.len);
     println("");
     error("Couldn't find symbol");
     return 0;//unreachable
