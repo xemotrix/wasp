@@ -47,7 +47,10 @@ fn tc_call(c:*AST_Expr_Call) Type {
 
         sym_fill_index_if_struct(&f.arg_types[i]);
         sym_fill_index_if_struct(&c.args[i].ty);
-        if !tc_can_unify(f.arg_types[i], c.args[i].ty) { error("Expected argument type mismatch"); }
+        if !tc_can_unify(f.arg_types[i], c.args[i].ty) { 
+            write(fun_name, fun_name_len); println("");
+            error("Expected argument type mismatch"); 
+        }
         c.args[i].ty = f.arg_types[i];
         i++;
     }
