@@ -163,8 +163,7 @@ const AST_DEF_VAR:int   = 2;
 const AST_DEF_TYPE:int  = 3;
 
 struct AST_Def_Fun {
-    name:*char;
-    name_len:int;
+    name:String;
     num_args:int;
     arg_names:**char;
     arg_name_lens:*int;

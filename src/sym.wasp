@@ -275,8 +275,8 @@ fn sym_add_fun(fun:*AST_Def_Fun) int {
     sym.fun = fun;
 
     e:*SSSEntry = new_entry();
-    e.name = fun.name;
-    e.name_len = fun.name_len;
+    e.name = fun.name.data;
+    e.name_len = fun.name.len;
     e.sym_idx = idx;
     return idx;
 }

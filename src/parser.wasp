@@ -472,8 +472,7 @@ fn parse_def_fun(t:Token) AST_Def {
 
     // parse name
     t = token_next();
-    fun.name = t.text.data;
-    fun.name_len = t.text.len;
+    fun.name = t.text;
     t = token_next();
     if t.type != TOK_LPAREN { error("Expected '('"); }
 

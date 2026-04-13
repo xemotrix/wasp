@@ -263,7 +263,7 @@ fn render_block(b:Block) {
 fn render_fun_def(fun:AST_Def_Fun) {
     ind();
     print("(FUNDEF ");
-    write(fun.name, fun.name_len);
+    write(fun.name.data, fun.name.len);
     IND++;
     i:int=0;
     print(" nargs:");

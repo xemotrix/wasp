@@ -920,7 +920,7 @@ fn cg_block(b:Block, break_lbl:*char, continue_lbl:*char) {
 
 fn cg_fun_def(fun:AST_Def_Fun) {
     write_nl();
-    cg_label_n(fun.name, fun.name_len);
+    cg_label_n(fun.name.data, fun.name.len);
     push("rbp");
     mov("rbp", "rsp");
     sub("rsp", fmt_dec(fun.locals_stack_size));
