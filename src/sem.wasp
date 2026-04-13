@@ -82,15 +82,15 @@ fn tc_access(access:*AST_Expr_Binop) Type {
     if (access.right.kind != AST_EXPR_VAR) {
         error("invalid access expression");
     }
-    field:*char = access.right.varr.name;
-    field_len:int = access.right.varr.name_len;
+    aux_field_str:String;
+    aux_field_str.data = access.right.varr.name;
+    aux_field_str.len = access.right.varr.name_len;
 
     accum_offset:int = 0;
     i:int = 0;
-    while (i < ts.n_fields) {
+    while i < ts.n_fields {
         sym_fill_index_if_struct(&ts.types[i]);
-        if !(field_len == ts.field_name_lens[i] &&
-              streq(ts.field_names[i], field, field_len)) {
+        if !string_eq(ts.fields[i], aux_field_str) {
             accum_offset = accum_offset+size_of_type(ts.types[i]);
             i++;
             continue;

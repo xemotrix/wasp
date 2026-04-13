@@ -296,8 +296,7 @@ fn render_type_def(ts:TypeStructDef) {
     while i < ts.n_fields {
         ind();
         print("(FIELD ");
-        write(ts.field_names[i], 
-              ts.field_name_lens[i]);
+        write(ts.fields[i].data, ts.fields[i].len);
         IND++;
         render_type(ts.types[i]);
         IND--;

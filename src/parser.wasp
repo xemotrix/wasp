@@ -562,23 +562,20 @@ fn parse_def_struct(t:Token) AST_Def {
     if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
 
     cap:int = 2;
-    def.stru.field_names = malloc(cap * @size(*char));
-    def.stru.field_name_lens = malloc(cap * @size(int));
+    def.stru.fields = malloc(cap * @size(String));
     def.stru.types = malloc(cap * @size(Type));
 
     n_args:int  = 0;
-    while (true) {
+    while true {
         if n_args >= cap {
             cap = cap * 2;
-            def.stru.field_names = mrealloc(def.stru.field_names, cap*@size(*char));
-            def.stru.field_name_lens = mrealloc(def.stru.field_name_lens, cap*@size(int));
+            def.stru.fields = mrealloc(def.stru.fields, cap*@size(String));
             def.stru.types = mrealloc(def.stru.types, cap*@size(Type));
         }
         t = token_next();
         if t.type == TOK_RCURLY { break; }
         if t.type != TOK_IDEN { error("Expected identifier in struct definition"); }
-        def.stru.field_names[n_args] = t.text.data;
-        def.stru.field_name_lens[n_args] = t.text.len;
+        def.stru.fields[n_args] = t.text;
 
         t = token_next();
         if t.type != TOK_COLON { 

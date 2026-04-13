@@ -11,8 +11,7 @@ const TYPE_KIND_STRUCT:int = 3;
 
 struct TypeStructDef {
     name:String;
-    field_names:**char;
-    field_name_lens:*int;
+    fields:*String;
     types:*Type;
     n_fields:int;
     sizeb:int;
