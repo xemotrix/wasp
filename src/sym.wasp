@@ -98,16 +98,13 @@ fn sym_search_type(name:*char, name_len:int) int {
 }
 
 fn sym_compute_type_sizes() {
-    println("sym_compute_type_sizes");
     n_finished:int = 0;
     last_round_total_finished:int = 0;
     i:int = 0;
     while n_finished != TT.len {
-        print("iter "); println(fmt_dec(i++));
         t_i:int = 0;
         while (t_i < TT.len) {
-            print("type idx "); println(fmt_dec(t_i));
-            if TT.structs[t_i].sizeb != -1 { continue; }
+            if TT.structs[t_i].sizeb != -1 { t_i++; continue; }
             size_accum:int = 0;
             fields_finished:int = 0;
             f_i:int = 0;
