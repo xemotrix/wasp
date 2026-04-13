@@ -70,7 +70,7 @@ fn render_lit_bool(l:AST_Expr_Lit_Bool) {
 
 fn render_expr_var(v:AST_Expr_Var) {
     print("(VAR '");
-    write(v.name, v.name_len);
+    write(v.name.data, v.name.len);
     print("'");
     print(" sidx:");
     print(fmt_dec(v.sym_idx));

@@ -585,8 +585,8 @@ fn cg_call(call:AST_Expr_Call) {
         i=i-1;
     }
 
-    fun_name:*char = call.fun_expr.varr.name;
-    fun_name_len:int = call.fun_expr.varr.name_len;
+    fun_name:*char = call.fun_expr.varr.name.data;
+    fun_name_len:int = call.fun_expr.varr.name.len;
 
     calln(fun_name, fun_name_len);
     ret:Type = fun_sym.fun.return_type;
@@ -669,7 +669,7 @@ fn cg_expr(expr:AST_Expr) {
             return;
         }
         assert(s.kind == SYM_KIND_VAR || s.kind == SYM_KIND_CONST);
-        push_s("QWORD", deref(glbl_lbl(expr.varr.name, expr.varr.name_len)));
+        push_s("QWORD", deref(glbl_lbl(expr.varr.name.data, expr.varr.name.len)));
         return;
     }
     if expr.kind == AST_EXPR_BINOP {

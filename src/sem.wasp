@@ -19,8 +19,8 @@ fn tc_call(c:*AST_Expr_Call) Type {
     if c.fun_expr.kind == AST_EXPR_BUILTIN { return tc_builtin_call(c); }
 
     assert(c.fun_expr.kind == AST_EXPR_VAR);
-    fun_name:*char = c.fun_expr.varr.name;
-    fun_name_len:int = c.fun_expr.varr.name_len;
+    fun_name:*char = c.fun_expr.varr.name.data;
+    fun_name_len:int = c.fun_expr.varr.name.len;
     sym_idx:int = sym_stack_search(fun_name, fun_name_len);
     s:*Symbol = sym_search(sym_idx);
     c.fun_expr.varr.sym_idx = sym_idx;
@@ -30,7 +30,7 @@ fn tc_call(c:*AST_Expr_Call) Type {
     }
     f:*AST_Def_Fun = s.fun;
     if c.args_len != f.num_args {
-        write(c.fun_expr.varr.name, c.fun_expr.varr.name_len); println("");
+        write(c.fun_expr.varr.name.data, c.fun_expr.varr.name.len); println("");
         error("function arg number mismatch");
     }
     c.temporary_sym_idxs = malloc(c.args_len * @size(int));
@@ -85,15 +85,12 @@ fn tc_access(access:*AST_Expr_Binop) Type {
     if (access.right.kind != AST_EXPR_VAR) {
         error("invalid access expression");
     }
-    aux_field_str:String;
-    aux_field_str.data = access.right.varr.name;
-    aux_field_str.len = access.right.varr.name_len;
 
     accum_offset:int = 0;
     i:int = 0;
     while i < ts.n_fields {
         sym_fill_index_if_struct(&ts.types[i]);
-        if !string_eq(ts.fields[i], aux_field_str) {
+        if !string_eq(ts.fields[i], access.right.varr.name) {
             accum_offset = accum_offset+size_of_type(ts.types[i]);
             i++;
             continue;
@@ -217,7 +214,7 @@ fn tc_unop(unop:*AST_Expr_Unop) Type {
 }
 
 fn tc_var(varr:*AST_Expr_Var) Type {
-    sym_idx:int = sym_stack_search(varr.name, varr.name_len);
+    sym_idx:int = sym_stack_search(varr.name.data, varr.name.len);
     sym:*Symbol = sym_search(sym_idx);
     varr.sym_idx = sym_idx;
     return sym.t;

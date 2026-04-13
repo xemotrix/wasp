@@ -45,8 +45,7 @@ const BUILTIN_SYSCALL:int = 0;
 const BUILTIN_SIZE:int    = 1;
 
 struct AST_Expr_Var {
-    name:*char;
-    name_len:int;
+    name:String;
     sym_idx:int;
 }
 

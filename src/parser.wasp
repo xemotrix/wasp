@@ -1,8 +1,7 @@
 fn parse_var(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_VAR;
-    e.varr.name = t.text.data;
-    e.varr.name_len = t.text.len;
+    e.varr.name = t.text;
     e.varr.sym_idx = -1;
     return e;
 }
