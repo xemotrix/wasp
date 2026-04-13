@@ -55,22 +55,25 @@ fn main(argc:int, argv:**char) int {
 
     lex(fl.input_file);
     println("======AFTER lex=======");
+    check_heap_health();
     // debug_heap();
     ast:AST = parse();
+    println("======AFTER parse=====");
+    check_heap_health();
     // debug_heap();
 
-    println("finished parsing");
     mfree(TOKENS.tokens);
-    // println("======AFTER parse=====");
+    println("======AFTER free tokens=====");
+    check_heap_health();
     // debug_heap();
 
     type_check(&ast);
-    // println("======AFTER typecheck=====");
+    println("======AFTER typecheck=====");
+    check_heap_health();
     // debug_heap();
-    // render_ast(&ast);
-    println("finished semantic analysis");
-
+    
     gen_asm(ast, fl.output_file);
-    println("finished codegen");
+    println("======AFTER codegen=====");
+    check_heap_health();
     return 0;
 }
