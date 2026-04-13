@@ -272,7 +272,7 @@ fn render_fun_def(fun:AST_Def_Fun) {
     while i < fun.num_args {
         ind();
         print("(ARG ");
-        write(fun.arg_names[i], fun.arg_name_lens[i]);
+        write(fun.arg_names[i].data, fun.arg_names[i].len);
         IND++;
         render_type(fun.arg_types[i]);
         IND--;

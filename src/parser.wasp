@@ -479,8 +479,7 @@ fn parse_def_fun(t:Token) AST_Def {
     // parse args
     arg_names_cap:int = 2;
     fun.num_args = 0;
-    fun.arg_names = malloc(arg_names_cap * @size(*char));
-    fun.arg_name_lens = malloc(arg_names_cap * @size(int));
+    fun.arg_names = malloc(arg_names_cap * @size(String));
     fun.arg_types = malloc(arg_names_cap * @size(Type));
     fun.arg_sym_idxs = malloc(arg_names_cap * @size(int));
 
@@ -491,13 +490,11 @@ fn parse_def_fun(t:Token) AST_Def {
         if t.type != TOK_IDEN { error("Expected Identifier"); }
         if fun.num_args >= arg_names_cap {
             arg_names_cap = arg_names_cap*2;
-            fun.arg_names = mrealloc(fun.arg_names, arg_names_cap * @size(*char));
-            fun.arg_name_lens = mrealloc(fun.arg_name_lens, arg_names_cap * @size(int));
+            fun.arg_names = mrealloc(fun.arg_names, arg_names_cap * @size(String));
             fun.arg_types = mrealloc(fun.arg_types, arg_names_cap * @size(Type));
             fun.arg_sym_idxs = mrealloc(fun.arg_sym_idxs, arg_names_cap * @size(int));
         }
-        fun.arg_names[fun.num_args] = t.text.data;
-        fun.arg_name_lens[fun.num_args] = t.text.len;
+        fun.arg_names[fun.num_args] = t.text;
 
         t = token_next();
         if t.type != TOK_COLON { error("expected ':'"); }

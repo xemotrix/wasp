@@ -403,7 +403,7 @@ fn tc_fun(fun:*AST_Def_Fun) {
     while i < fun.num_args {
         sym_fill_index_if_struct(&fun.arg_types[i]);
         fun.arg_sym_idxs[i] = sym_add_svar_arg(
-            fun.arg_types[i], fun.arg_names[i], fun.arg_name_lens[i]);
+            fun.arg_types[i], fun.arg_names[i].data, fun.arg_names[i].len);
         i++;
     }
 

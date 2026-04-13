@@ -165,8 +165,7 @@ const AST_DEF_TYPE:int  = 3;
 struct AST_Def_Fun {
     name:String;
     num_args:int;
-    arg_names:**char;
-    arg_name_lens:*int;
+    arg_names:*String;
     arg_types:*Type;
     return_type:Type;
     block:Block;
