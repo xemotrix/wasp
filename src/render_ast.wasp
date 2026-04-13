@@ -288,7 +288,7 @@ fn render_fun_def(fun:AST_Def_Fun) {
 fn render_type_def(ts:TypeStructDef) {
     ind();
     print("(TYPEDEF ");
-    write(ts.name, ts.name_len);
+    write(ts.name.data, ts.name.len);
     print(" nfields:");
     print(fmt_dec(ts.n_fields));
     IND++;

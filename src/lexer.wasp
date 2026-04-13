@@ -22,9 +22,6 @@ fn lex_peek_token(src:*char) Token {
     if *src == '\'' { return lex_char(src); }
 
     src_start:*char = src;
-    // t.text = src;
-    // t.text_len = 1;
-
     text_len:int = 1;
     t.type = -1;
 
@@ -120,10 +117,7 @@ fn lex_iden(src:*char) Token {
     }
 
     t:Token;
-    // t.text_len = c;
-    // t.text = src;
     t.text = string_new(src, c);
-
     t.type = -1;
 
     if c == 2 {
@@ -154,7 +148,6 @@ fn lex_iden(src:*char) Token {
         if streq(src, "include", c) {
             to_skip:int = lex_include(src);
             t.type = TOK_SKIP;
-            // t.text_len = to_skip;
             t.text.len = to_skip;
         }
     }
@@ -201,8 +194,6 @@ fn lex_include(src:*char) int {
 
 fn lex_string(src:*char) Token {
     t:Token;
-    // t.text_len = 0;
-    // t.text = src;
     text_len:int = 0;
     t.type = TOK_LIT_STRING;
     while true {
@@ -225,7 +216,6 @@ fn lex_char(src: *char) Token {
     t:Token;
     t.type = TOK_LIT_CHAR;
     text_len:int = 2;
-    // text = src;
     if src[1] == '\\' {
         valid_escape:bool = false;
         if src[2] == 'n' || src[2] == 'r'
@@ -253,8 +243,6 @@ fn lex_num(src: *char) Token {
     t:Token;
     t.type = TOK_LIT_INT;
     t.text = string_new(src, len);
-    // t.text_len = len;
-    // t.text = src;
     return t;
 }
 

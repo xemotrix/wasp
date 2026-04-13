@@ -10,8 +10,7 @@ const TYPE_KIND_PTR:int    = 2;
 const TYPE_KIND_STRUCT:int = 3;
 
 struct TypeStructDef {
-    name:*char;
-    name_len:int;
+    name:String;
     field_names:**char;
     field_name_lens:*int;
     types:*Type;

@@ -557,8 +557,7 @@ fn parse_def_struct(t:Token) AST_Def {
     def.kind = AST_DEF_TYPE;
     t = token_next();
     if t.type != TOK_IDEN { error("Expected identifier after 'struct'"); }
-    def.stru.name = t.text.data;
-    def.stru.name_len = t.text.len;
+    def.stru.name = t.text;
     t = token_next();
     if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
 
@@ -583,7 +582,7 @@ fn parse_def_struct(t:Token) AST_Def {
 
         t = token_next();
         if t.type != TOK_COLON { 
-            write(def.stru.name, def.stru.name_len);
+            write(def.stru.name.data, def.stru.name.len);
             println(fmt_dec(t.type));
             error("Expected ':' after identifier in struct definition"); 
         }

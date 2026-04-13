@@ -324,6 +324,7 @@ fn tc_stmt(stmt:*AST_Stmt, ret:Type) {
         sym_fill_index_if_struct(&rvalue.ty);
 
         if (!tc_can_unify(lvalue.ty, rvalue.ty)) {
+            render_stmt(*stmt);
             render_type(lvalue.ty);
             render_type(rvalue.ty);
             error("can't assign expression of type X, to destination of type Y");

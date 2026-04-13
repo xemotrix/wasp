@@ -55,7 +55,5 @@ const TOK_EOF:int          = 52;
 struct Token {
   type:int;
   text:String;
-  // text:*char;
-  // text_len:int;
 }
 

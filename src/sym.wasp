@@ -85,10 +85,14 @@ fn sym_search_type_idx(idx:int) TypeStructDef {
 }
 
 fn sym_search_type(name:*char, name_len:int) int {
+    name_str:String;
+    name_str.data = name;
+    name_str.len = name_len;
+
     i:int = 0;
     while i < TT.len {
         t:TypeStructDef = TT.structs[i];
-        if t.name_len == name_len && streq(name, t.name, name_len) {
+        if string_eq(t.name, name_str) {
             return i;
         }
         i++;
