@@ -1,21 +1,21 @@
 fn parse_var(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_VAR;
-    e.varr.name = t.text;
-    e.varr.name_len = t.text_len;
+    e.varr.name = t.text.data;
+    e.varr.name_len = t.text.len;
     e.varr.sym_idx = -1;
     return e;
 }
 
 fn parse_builtin(t:Token) AST_Expr {
     e:AST_Expr;
-    if streq(t.text, "@syscall", 8) {
+    if string_eq_cstring(t.text, "@syscall") {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SYSCALL;
         return e;
     }
-    if streq(t.text, "@size", 5) {
+    if string_eq_cstring(t.text, "@size") {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SIZE;
@@ -37,17 +37,17 @@ fn parse_builtin(t:Token) AST_Expr {
 fn parse_lit_char(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_CHAR;
-    if t.text[1] != '\\' {
-        e.lit_char.value = t.text[1];
+    if t.text.data[1] != '\\' {
+        e.lit_char.value = t.text.data[1];
         return e;
     }
     
-    if t.text[2] == '\'' { e.lit_char.value = '\''; }
-    if t.text[2] == '\\' { e.lit_char.value = '\\'; }
-    if t.text[2] == 'n'  { e.lit_char.value = '\n'; }
-    if t.text[2] == 't'  { e.lit_char.value = '\t'; }
-    if t.text[2] == 'r'  { e.lit_char.value = '\r'; }
-    if t.text[2] == '0'  { e.lit_char.value = '\0'; }
+    if t.text.data[2] == '\'' { e.lit_char.value = '\''; }
+    if t.text.data[2] == '\\' { e.lit_char.value = '\\'; }
+    if t.text.data[2] == 'n'  { e.lit_char.value = '\n'; }
+    if t.text.data[2] == 't'  { e.lit_char.value = '\t'; }
+    if t.text.data[2] == 'r'  { e.lit_char.value = '\r'; }
+    if t.text.data[2] == '0'  { e.lit_char.value = '\0'; }
 
     return e;
 }
@@ -55,23 +55,23 @@ fn parse_lit_char(t:Token) AST_Expr {
 fn parse_lit_string(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_STRING;
-    e.lit_string.text = malloc(t.text_len - 1);
+    e.lit_string.text = malloc(t.text.len);
 
     dest_i:int = 0;
     i:int = 1;
-    while (i < t.text_len - 1) {
-        c:char = t.text[i];
+    while (i < t.text.len - 1) {
+        c:char = t.text.data[i];
         if c != '\\' {
             e.lit_string.text[dest_i++] = c;
             i++;
             continue;
         }
         i++;
-        if t.text[i] == 'n' { e.lit_string.text[dest_i++] = '\n'; }
-        if t.text[i] == '"' { e.lit_string.text[dest_i++] = '"'; }
-        if t.text[i] == 't' { e.lit_string.text[dest_i++] = '\t'; }
-        if t.text[i] == 'r' { e.lit_string.text[dest_i++] = '\r'; }
-        if t.text[i] == '0' { e.lit_string.text[dest_i++] = '\0'; }
+        if t.text.data[i] == 'n' { e.lit_string.text[dest_i++] = '\n'; }
+        if t.text.data[i] == '"' { e.lit_string.text[dest_i++] = '"'; }
+        if t.text.data[i] == 't' { e.lit_string.text[dest_i++] = '\t'; }
+        if t.text.data[i] == 'r' { e.lit_string.text[dest_i++] = '\r'; }
+        if t.text.data[i] == '0' { e.lit_string.text[dest_i++] = '\0'; }
         i++;
     }
     e.lit_string.text[dest_i] = '\0';
@@ -81,11 +81,11 @@ fn parse_lit_string(t:Token) AST_Expr {
 fn parse_lit_bool(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_BOOL;
-    if streq(t.text, "true", 4) {
+    if string_eq_cstring(t.text, "true") {
         e.lit_bool.value = 1;
         return e;
     } 
-    if streq(t.text, "false", 5) {
+    if string_eq_cstring(t.text, "false") {
         e.lit_bool.value = 0;
         return e;
     }
@@ -98,18 +98,18 @@ fn parse_lit_int(t:Token) AST_Expr {
 
     num:int = 0;
     i:int = 0;
-    while i < t.text_len {
+    while i < t.text.len {
         num = num * 10;
-        if t.text[i] == '0' { num=num+0; }
-        if t.text[i] == '1' { num=num+1; }
-        if t.text[i] == '2' { num=num+2; }
-        if t.text[i] == '3' { num=num+3; }
-        if t.text[i] == '4' { num=num+4; }
-        if t.text[i] == '5' { num=num+5; }
-        if t.text[i] == '6' { num=num+6; }
-        if t.text[i] == '7' { num=num+7; }
-        if t.text[i] == '8' { num=num+8; }
-        if t.text[i] == '9' { num=num+9; }
+        if t.text.data[i] == '0' { num=num+0; }
+        if t.text.data[i] == '1' { num=num+1; }
+        if t.text.data[i] == '2' { num=num+2; }
+        if t.text.data[i] == '3' { num=num+3; }
+        if t.text.data[i] == '4' { num=num+4; }
+        if t.text.data[i] == '5' { num=num+5; }
+        if t.text.data[i] == '6' { num=num+6; }
+        if t.text.data[i] == '7' { num=num+7; }
+        if t.text.data[i] == '8' { num=num+8; }
+        if t.text.data[i] == '9' { num=num+9; }
         i++;
     }
     e:AST_Expr;
@@ -293,8 +293,8 @@ fn parse_type(t:Token) Type {
     if t.type == TOK_IDEN {
         ty:Type;
         ty.kind = TYPE_KIND_STRUCT;
-        ty.struct_name.name = t.text;
-        ty.struct_name.name_len = t.text_len;
+        ty.struct_name.name = t.text.data;
+        ty.struct_name.name_len = t.text.len;
         ty.struct_name.sym_idx = -1;
         return ty;
     }
@@ -312,8 +312,8 @@ fn parse_type(t:Token) Type {
 fn parse_stmt_define(t:Token) AST_Stmt {
     stmt:AST_Stmt;
     stmt.kind = AST_STMT_DEFINE;
-    stmt.define.var_name = t.text;
-    stmt.define.var_name_len = t.text_len;
+    stmt.define.var_name = t.text.data;
+    stmt.define.var_name_len = t.text.len;
 
     token_next(); // skip the ':' (should already be checked for)
     t = token_next();
@@ -475,8 +475,8 @@ fn parse_def_fun(t:Token) AST_Def {
 
     // parse name
     t = token_next();
-    fun.name = t.text;
-    fun.name_len = t.text_len;
+    fun.name = t.text.data;
+    fun.name_len = t.text.len;
     t = token_next();
     if t.type != TOK_LPAREN { error("Expected '('"); }
 
@@ -500,8 +500,8 @@ fn parse_def_fun(t:Token) AST_Def {
             fun.arg_types = mrealloc(fun.arg_types, arg_names_cap * @size(Type));
             fun.arg_sym_idxs = mrealloc(fun.arg_sym_idxs, arg_names_cap * @size(int));
         }
-        fun.arg_names[fun.num_args] = t.text;
-        fun.arg_name_lens[fun.num_args] = t.text_len;
+        fun.arg_names[fun.num_args] = t.text.data;
+        fun.arg_name_lens[fun.num_args] = t.text.len;
 
         t = token_next();
         if t.type != TOK_COLON { error("expected ':'"); }
@@ -557,8 +557,8 @@ fn parse_def_struct(t:Token) AST_Def {
     def.kind = AST_DEF_TYPE;
     t = token_next();
     if t.type != TOK_IDEN { error("Expected identifier after 'struct'"); }
-    def.stru.name = t.text;
-    def.stru.name_len = t.text_len;
+    def.stru.name = t.text.data;
+    def.stru.name_len = t.text.len;
     t = token_next();
     if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
 
@@ -578,8 +578,8 @@ fn parse_def_struct(t:Token) AST_Def {
         t = token_next();
         if t.type == TOK_RCURLY { break; }
         if t.type != TOK_IDEN { error("Expected identifier in struct definition"); }
-        def.stru.field_names[n_args] = t.text;
-        def.stru.field_name_lens[n_args] = t.text_len;
+        def.stru.field_names[n_args] = t.text.data;
+        def.stru.field_name_lens[n_args] = t.text.len;
 
         t = token_next();
         if t.type != TOK_COLON { 

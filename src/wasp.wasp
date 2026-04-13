@@ -9,6 +9,7 @@ include "src/sym.wasp"
 include "src/sem.wasp"
 include "src/codegen.wasp"
 include "src/mem.wasp"
+include "src/strings.wasp"
 
 struct Flags {
     input_file:*char;

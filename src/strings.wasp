@@ -1,0 +1,29 @@
+struct String {
+    data:*char;
+    len:int;
+}
+
+fn string_new(data:*char, len:int) String {
+    s:String;
+    s.data = data;
+    s.len = len;
+    return s;
+}
+
+fn string_eq_cstring(s:String, cs:*char) bool {
+    c_len:int = strlen(cs);
+    if c_len != s.len { return false; }
+    i:int = 0;
+    while i < s.len {
+        if s.data[i] != cs[i] { return false; }
+        i++;
+    }
+    return true;
+}
+
+
+struct StringBuilder {
+    start:*char;
+    len:int;
+    cap:int;
+}

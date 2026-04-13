@@ -21,9 +21,11 @@ fn lex_peek_token(src:*char) Token {
     if *src == '"' { return lex_string(src); }
     if *src == '\'' { return lex_char(src); }
 
-    t.text = src;
-    t.text_len = 1;
+    src_start:*char = src;
+    // t.text = src;
+    // t.text_len = 1;
 
+    text_len:int = 1;
     t.type = -1;
 
     if *src == '(' { t.type = TOK_LPAREN; }
@@ -44,69 +46,70 @@ fn lex_peek_token(src:*char) Token {
         t.type = TOK_PLUS; 
         if src[1] != '\0' && src[1] == '+' {
             t.type = TOK_PLUSPLUS;
-            t.text_len++;
+            text_len++;
         }
     }
     if *src == '-' {
         t.type = TOK_MINUS; 
         if src[1] != '\0' && src[1] == '-' {
             t.type = TOK_MINUSMINUS;
-            t.text_len++;
+            text_len++;
         }
     }
     if *src == '!' {
         t.type = TOK_BANG;
         if src[1] != '\0' && src[1] == '=' {
             t.type = TOK_BANGEQUALS;
-            t.text_len++;
+            text_len++;
         }
     }
     if *src == '|' {
         t.type = TOK_BIT_OR;
         if src[1] != '\0' && src[1] == '|' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_OR;
         }
     }
     if *src == '&' {
         t.type = TOK_AMPERSAND;
         if src[1] != '\0' && src[1] == '&' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_AND;
         }
     }
     if *src == '<' {
         t.type = TOK_LT;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_LTE;
         }
         if src[1] != '\0' && src[1] == '<' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_SHIFT_LEFT;
         }
     }
     if *src == '>' {
         t.type = TOK_GT;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_GTE;
         }
         if src[1] != '\0' && src[1] == '>' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_SHIFT_RIGHT;
         }
     }
     if *src == '=' {
         t.type = TOK_EQUALS;
         if src[1] != '\0' && src[1] == '=' {
-            t.text_len++;
+            text_len++;
             t.type = TOK_EQUALSEQUALS;
         }
     }
     if t.type < 0 {
         error("unknown token");
     }
+    t.text = string_new(src_start, text_len);
     return t;
 }
 
@@ -117,8 +120,9 @@ fn lex_iden(src:*char) Token {
     }
 
     t:Token;
-    t.text_len = c;
-    t.text = src;
+    // t.text_len = c;
+    // t.text = src;
+    t.text = string_new(src, c);
 
     t.type = -1;
 
@@ -150,7 +154,8 @@ fn lex_iden(src:*char) Token {
         if streq(src, "include", c) {
             to_skip:int = lex_include(src);
             t.type = TOK_SKIP;
-            t.text_len = to_skip;
+            // t.text_len = to_skip;
+            t.text.len = to_skip;
         }
     }
     if c == 8 {
@@ -196,45 +201,48 @@ fn lex_include(src:*char) int {
 
 fn lex_string(src:*char) Token {
     t:Token;
-    t.text_len = 0;
-    t.text = src;
+    // t.text_len = 0;
+    // t.text = src;
+    text_len:int = 0;
     t.type = TOK_LIT_STRING;
     while true {
-        t.text_len++;
-        if src[t.text_len] == '\0' { error("unfinished string literal"); }
-        if src[t.text_len] == '\\' 
-        && src[t.text_len + 1] != '\0' 
-        && src[t.text_len + 1] == '"' {
-            t.text_len++;
+        text_len++;
+        if src[text_len] == '\0' { error("unfinished string literal"); }
+        if src[text_len] == '\\' 
+        && src[text_len + 1] != '\0' 
+        && src[text_len + 1] == '"' {
+            text_len++;
             continue;
         }
-        if src[t.text_len] == '"' { break; }
+        if src[text_len] == '"' { break; }
     }
-    t.text_len++;
+    text_len++;
+    t.text = string_new(src, text_len);
     return t;
 }
 
 fn lex_char(src: *char) Token {
     t:Token;
     t.type = TOK_LIT_CHAR;
-    t.text_len = 2;
-    t.text = src;
+    text_len:int = 2;
+    // text = src;
     if src[1] == '\\' {
         valid_escape:bool = false;
         if src[2] == 'n' || src[2] == 'r'
         || src[2] == 't' || src[2] == '\\'
         || src[2] == '0' || src[2] == '\'' {
-            t.text_len++;
+            text_len++;
             valid_escape = true;
         }
         if !valid_escape { error("unrecognized scaped character"); }
     }
   
-    if src[t.text_len] != '\'' { 
+    if src[text_len] != '\'' { 
         error("expected closing '");
     }
 
-    t.text_len++;
+    text_len++;
+    t.text = string_new(src, text_len);
     return t;
 }
 
@@ -244,8 +252,9 @@ fn lex_num(src: *char) Token {
 
     t:Token;
     t.type = TOK_LIT_INT;
-    t.text_len = len;
-    t.text = src;
+    t.text = string_new(src, len);
+    // t.text_len = len;
+    // t.text = src;
     return t;
 }
 
@@ -271,7 +280,7 @@ fn lex_token(src:**char) Token {
         *src = *src + len_skip_comments(*src);
     }
     t:Token = lex_peek_token(*src);
-    *src = *src + t.text_len;
+    *src = *src + t.text.len;
     return t;
 }
 

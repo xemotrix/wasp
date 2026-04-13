@@ -998,34 +998,39 @@ fn cg_especial_char_ascii(c:char) int {
     return 0;
 }
 
-fn cg_rodata() {
-    // TODO: create string table while lexing
-    write_lbl("\nsection .rodata");
-    if (CG_STRS.len > 0) {
-        i:int = 0;
-        while i < CG_STRS.len {
-            s:CG_StrEntry = CG_STRS.strings[i];
-            lbl:*char=strcat("\tSTR_", fmt_dec(s.label));
-            lbl=strcat(lbl, ": db \"");
-            write_arbitrary(lbl);
+fn cg_string_lits() {
+    i:int = 0;
+    while i < CG_STRS.len {
+        s:CG_StrEntry = CG_STRS.strings[i];
+        lbl:*char=strcat("\tSTR_", fmt_dec(s.label));
+        write_arbitrary(strcat(lbl, ": db \""));
 
-            j:int=0;
-            while true {
-                c:char = s.text[j++];
-                if (c == '\0') { break; }
-                if (c <= '\r' || c=='"') {
-                    write_arbitrary("\", ");
-                    write_arbitrary(fmt_dec(cg_especial_char_ascii(c)));
-                    write_arbitrary(", \"");
-                    continue;
-                }
-                write_char(c);
+        j:int=0;
+        while true {
+            c:char = s.text[j++];
+            if c == '\0' { break; }
+            if c <= '\r' || c=='"' {
+                write_arbitrary("\", ");
+                write_arbitrary(fmt_dec(cg_especial_char_ascii(c)));
+                write_arbitrary(", \"");
+                continue;
             }
-            write_arbitrary("\", 0\n");
-            i++;
+            write_char(c);
         }
+        write_arbitrary("\", 0\n");
+        len:int=j-1;
+
+        lbl_struct:*char=strcat(strcat("\tSTRV_", fmt_dec(s.label)), ":\n");
+        write_arbitrary(lbl_struct);
+        len_field:*char=strcat(strcat("\t\tdq ", fmt_dec(len)), "\n");
+        write_arbitrary(len_field);
+        data_field:*char=strcat(strcat("\t\tdq ", lbl), "\n");
+        write_arbitrary(data_field);
+        i++;
     }
-    
+}
+
+fn cg_consts() {
     st:*SymT = sym_all();
     i:int = 0;
     while i < st.len {
@@ -1034,6 +1039,13 @@ fn cg_rodata() {
         }
         i++;
     }
+}
+
+fn cg_rodata() {
+    // TODO: create string table while lexing
+    write_lbl("\nsection .rodata");
+    cg_string_lits();
+    cg_consts();
 }
 
 fn cg_data() {
