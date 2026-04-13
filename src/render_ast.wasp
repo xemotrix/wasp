@@ -18,8 +18,8 @@ fn render_type(t:Type) {
         t = *t.ptr;
     }
     if t.kind == TYPE_KIND_STRUCT {
-        write(t.struct_name.name,
-              t.struct_name.name_len);
+        write(t.struct_name.name.data,
+              t.struct_name.name.len);
         print(" tidx:(");
         print(fmt_dec(t.struct_name.sym_idx));
     }

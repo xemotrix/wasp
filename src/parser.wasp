@@ -293,8 +293,7 @@ fn parse_type(t:Token) Type {
     if t.type == TOK_IDEN {
         ty:Type;
         ty.kind = TYPE_KIND_STRUCT;
-        ty.struct_name.name = t.text.data;
-        ty.struct_name.name_len = t.text.len;
+        ty.struct_name.name = t.text;
         ty.struct_name.sym_idx = -1;
         return ty;
     }

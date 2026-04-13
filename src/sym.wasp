@@ -128,7 +128,7 @@ fn sym_compute_type_sizes() {
                 }
                 if t.kind == TYPE_KIND_STRUCT {
                     st = sym_search_type_idx(sym_search_type(
-                        t.struct_name.name, t.struct_name.name_len));
+                        t.struct_name.name.data, t.struct_name.name.len));
                     if st.sizeb == -1 { f_i++; continue; }
                     size_accum = size_accum+st.sizeb;
                     fields_finished++;
@@ -232,8 +232,8 @@ fn new_entry() *SSSEntry {
 fn sym_fill_index_if_struct(t:*Type) {
     if t.kind == TYPE_KIND_BASE { return; }
     if t.kind ==  TYPE_KIND_STRUCT {
-        t.struct_name.sym_idx = sym_search_type(t.struct_name.name, 
-                                                t.struct_name.name_len);
+        t.struct_name.sym_idx = sym_search_type(t.struct_name.name.data, 
+                                                t.struct_name.name.len);
         return;
     }
     if t.kind == TYPE_KIND_PTR {
