@@ -34,7 +34,7 @@ fn render_type(t:Type) {
 
 fn render_lit_string(l:AST_Expr_Lit_String) {
     print("(LIT_STRING '");
-    print(l.text);
+    write(l.text.data, l.text.len);
     print("')");
 }
 

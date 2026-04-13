@@ -54,26 +54,26 @@ fn parse_lit_char(t:Token) AST_Expr {
 fn parse_lit_string(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_STRING;
-    e.lit_string.text = malloc(t.text.len);
+    e.lit_string.text.data = malloc(t.text.len-1);
 
     dest_i:int = 0;
     i:int = 1;
     while (i < t.text.len - 1) {
         c:char = t.text.data[i];
         if c != '\\' {
-            e.lit_string.text[dest_i++] = c;
+            e.lit_string.text.data[dest_i++] = c;
             i++;
             continue;
         }
         i++;
-        if t.text.data[i] == 'n' { e.lit_string.text[dest_i++] = '\n'; }
-        if t.text.data[i] == '"' { e.lit_string.text[dest_i++] = '"'; }
-        if t.text.data[i] == 't' { e.lit_string.text[dest_i++] = '\t'; }
-        if t.text.data[i] == 'r' { e.lit_string.text[dest_i++] = '\r'; }
-        if t.text.data[i] == '0' { e.lit_string.text[dest_i++] = '\0'; }
+        if t.text.data[i] == 'n' { e.lit_string.text.data[dest_i++] = '\n'; }
+        if t.text.data[i] == '"' { e.lit_string.text.data[dest_i++] = '"'; }
+        if t.text.data[i] == 't' { e.lit_string.text.data[dest_i++] = '\t'; }
+        if t.text.data[i] == 'r' { e.lit_string.text.data[dest_i++] = '\r'; }
+        if t.text.data[i] == '0' { e.lit_string.text.data[dest_i++] = '\0'; }
         i++;
     }
-    e.lit_string.text[dest_i] = '\0';
+    e.lit_string.text.len = dest_i;
     return e;
 }
 

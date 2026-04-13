@@ -228,7 +228,7 @@ fn arg_regs(idx:int) *char {
 }
 
 struct CG_StrEntry {
-  text:*char;
+  text:String;
   label:int;
 }
 
@@ -251,7 +251,7 @@ var CG_STRS:*CG_StrMap = 0;
 fn cg_init_maps() {
     CG_STRS = malloc(@size(CG_StrMap));
     CG_STRS.len = 0;
-    CG_STRS.cap = 4;
+    CG_STRS.cap = 32;
     CG_STRS.strings = malloc(CG_STRS.cap * @size(CG_StrEntry));
 
     CODE_BUFFER = malloc(@size(CodeBuffer));
@@ -264,18 +264,12 @@ fn cg_lbl() int {
     CG_LBL_CTR++;
     return CG_LBL_CTR; 
 }
+
 fn save_const_string(s:AST_Expr_Lit_String) int {
-    if CG_STRS == 0 {
-        CG_STRS = malloc(24);
-        CG_STRS.len = 0;
-        CG_STRS.cap = 32;
-        CG_STRS.strings = malloc(CG_STRS.cap * 16);
-    }
-    
     lbl:int = cg_lbl();
     if CG_STRS.len >= CG_STRS.cap {
         CG_STRS.cap = CG_STRS.cap*2;
-        CG_STRS.strings = mrealloc(CG_STRS.strings, CG_STRS.cap * 24);
+        CG_STRS.strings = mrealloc(CG_STRS.strings, CG_STRS.cap * @size(CG_StrEntry));
     }
     e:CG_StrEntry;
     e.text = s.text;
@@ -1006,9 +1000,8 @@ fn cg_string_lits() {
         write_arbitrary(strcat(lbl, ": db \""));
 
         j:int=0;
-        while true {
-            c:char = s.text[j++];
-            if c == '\0' { break; }
+        while j < s.text.len {
+            c:char = s.text.data[j++];
             if c <= '\r' || c=='"' {
                 write_arbitrary("\", ");
                 write_arbitrary(fmt_dec(cg_especial_char_ascii(c)));

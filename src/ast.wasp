@@ -58,7 +58,7 @@ struct AST_Expr_Lit_Bool {
 }
 
 struct AST_Expr_Lit_String {
-    text:*char;
+    text:String;
 }
 
 struct AST_Expr_Lit_Char {
