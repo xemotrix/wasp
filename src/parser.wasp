@@ -14,6 +14,12 @@ fn parse_builtin(t:Token) AST_Expr {
         e.builtin = BUILTIN_SYSCALL;
         return e;
     }
+    if string_eq_cstring(t.text, "@ts") {
+        println("parsed @ts");
+        e.kind = AST_EXPR_BUILTIN;
+        e.builtin = BUILTIN_TS;
+        return e;
+    }
     if string_eq_cstring(t.text, "@size") {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;

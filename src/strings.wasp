@@ -3,6 +3,13 @@ struct String {
     len:int;
 }
 
+fn to_string(data:*char) String {
+    s:String;
+    s.data = data;
+    s.len = strlen(data);
+    return s;
+}
+
 fn string_new(data:*char, len:int) String {
     s:String;
     s.data = data;

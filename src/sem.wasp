@@ -10,6 +10,22 @@ fn tc_builtin_call(c:*AST_Expr_Call) Type {
         }
         return ast_new_base_type(TYPE_INT);
     }
+    if c.fun_expr.builtin == BUILTIN_TS {
+        if c.args_len != 1 { error("invalid number of arguments for @ts"); }
+        tc_expr(&c.args[0]);
+        if !is_type_char_ptr(c.args[0].ty)
+        && !is_type_string(c.args[0].ty) {
+            error("@ts can only be used with string literals"); 
+        }
+
+        if is_type_char_ptr(c.args[0].ty) {
+            c.fun_expr.kind = AST_EXPR_VAR;
+            c.fun_expr.varr.name = to_string("to_string");
+            tc_call(c);
+        }
+
+        return ast_new_string_type();
+    }
     error("Unknown builtin");
     nop:Type;
     return nop;
@@ -48,6 +64,7 @@ fn tc_call(c:*AST_Expr_Call) Type {
         if !tc_can_unify(f.arg_types[i], c.args[i].ty) { 
             fun_name:*char = c.fun_expr.varr.name.data;
             fun_name_len:int = c.fun_expr.varr.name.len;
+            render_expr_call(*c);
             write(fun_name, fun_name_len); println("");
             error("Expected argument type mismatch"); 
         }

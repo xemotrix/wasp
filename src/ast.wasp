@@ -43,6 +43,7 @@ const AST_EXPR_BUILTIN:int    = 8;
 
 const BUILTIN_SYSCALL:int = 0;
 const BUILTIN_SIZE:int    = 1;
+const BUILTIN_TS:int      = 2;
 
 struct AST_Expr_Var {
     name:String;
@@ -203,4 +204,24 @@ fn ast_new_ptr_type(inner_t:Type) Type {
     t.ptr = malloc(@size(Type));
     *t.ptr = inner_t;
     return t;
+}
+
+fn ast_new_string_type() Type {
+    t:Type;
+    t.kind = TYPE_KIND_STRUCT;
+    t.struct_name.name.data = "String";
+    t.struct_name.name.len = 6;
+    sym_fill_index_if_struct(&t);
+    return t;
+}
+
+fn is_type_char_ptr(t:Type) bool {
+    return t.kind == TYPE_KIND_PTR
+        && t.ptr.kind == TYPE_KIND_BASE
+        && t.ptr.base == TYPE_CHAR;
+}
+
+fn is_type_string(t:Type) bool {
+    return t.kind == TYPE_KIND_STRUCT
+        && string_eq_cstring(t.struct_name.name, "String");
 }

@@ -537,6 +537,11 @@ fn cg_builtin_call(call:AST_Expr_Call) {
         cg_syscall(call);
         return;
     }
+    if call.fun_expr.builtin == BUILTIN_TS {
+        // for @ts(something:String)
+        cg_expr(call.args[0]);
+        return;
+    }
     error("That builtin doesn't exist");
 }
 
