@@ -39,7 +39,7 @@ fn print(str:String) {
 
 fn println(str:String) {
     print(str);
-    print(@ts("\n"));
+    print("\n");
 }
 
 fn exit(code:int) {
@@ -80,7 +80,7 @@ fn read(fd:int, buf:*char, count:int) int {
 
 fn read_file(fd:int) *char {
     if fd < 0 {
-        println(@ts("Error reading file"));
+        println("Error reading file");
         exit(1);
     }
     buf:*char = malloc(4096*100);
@@ -89,7 +89,7 @@ fn read_file(fd:int) *char {
     while true {
         bread:int = read(fd, buf+chunk_c*to_read, to_read);
         if bread == 0 && chunk_c == 0 {
-            println(@ts("No bytes read :("));
+            println("No bytes read :(");
             exit(1);
         }
         if bread != to_read { break; }
@@ -106,7 +106,7 @@ fn fmt_dec(num:int) String {
         num = -num;
     }
     if num == 0 {
-        return @ts("0");
+        return "0";
     }
     start:int = idx;
     while num != 0 {
@@ -136,7 +136,7 @@ fn fmt_dec(num:int) String {
 
 fn fmt_hex(num:int) String {
     out:*char = malloc(16+3);
-    hex:String = @ts("0123456789abcdef");
+    hex:String = "0123456789abcdef";
     out[0] = '0';
     out[1] = 'x';
     i:int=0;

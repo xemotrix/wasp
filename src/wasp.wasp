@@ -17,14 +17,14 @@ struct Flags {
 }
 
 fn error_usage() {
-    println(@ts("Usage:"));
-    println(@ts("\t./wasp prog.wasp -o out.s"));
+    println("Usage:");
+    println("\t./wasp prog.wasp -o out.s");
     exit(1);
 }
 
 fn parse_flags(argc:int, argv:**char) Flags {
     if argc != 4 { 
-        print(@ts("incorrect number of flags: "));
+        print("incorrect number of flags: ");
         println(fmt_dec(argc));
         error_usage(); 
     }
@@ -35,7 +35,7 @@ fn parse_flags(argc:int, argv:**char) Flags {
 
     flag:String = to_string(argv[2]);
 
-    if !string_eq(flag, @ts("-o")) { error_usage(); }
+    if !string_eq(flag, "-o") { error_usage(); }
 
     f.output_file = to_string(argv[3]);
 
@@ -46,26 +46,26 @@ fn main(argc:int, argv:**char) int {
     fl:Flags = parse_flags(argc, argv);
 
     lex(fl.input_file);
-    println(@ts("======AFTER lex======="));
+    println("======AFTER lex=======");
     check_heap_health();
     // debug_heap();
     ast:AST = parse();
-    println(@ts("======AFTER parse====="));
+    println("======AFTER parse=====");
     check_heap_health();
     // debug_heap();
 
     mfree(TOKENS.tokens);
-    println(@ts("======AFTER free tokens====="));
+    println("======AFTER free tokens=====");
     check_heap_health();
     // debug_heap();
 
     type_check(&ast);
-    println(@ts("======AFTER typecheck====="));
+    println("======AFTER typecheck=====");
     check_heap_health();
     // debug_heap();
     
     gen_asm(ast, fl.output_file);
-    println(@ts("======AFTER codegen====="));
+    println("======AFTER codegen=====");
     check_heap_health();
     return 0;
 }

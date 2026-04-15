@@ -123,18 +123,18 @@ fn check_heap_health(){
     current_block:*HeapBlockHeader = GLOBAL_HEAP.first_free;
     while true {
         if current_block.size == 0 {
-            println(@ts("hecatombe size 0"));
+            println("hecatombe size 0");
             exit(33);
         }
         if current_block.free_next == 0 {
             break;
         }
         if current_block + current_block.size > current_block.free_next {
-            println(@ts("hecatombe wrong size"));
+            println("hecatombe wrong size");
             exit(33);
         }
         if current_block.free_next.free_prev != current_block {
-            println(@ts("hecatombe bad back pointer"));
+            println("hecatombe bad back pointer");
             exit(33);
         }
         current_block = current_block.free_next;
@@ -149,7 +149,7 @@ fn malloc(sizeb:int) *void {
     if fb == 0 {
         // no free space usable (with hard limit)
         // TODO: expand
-        println(@ts("ENOMEM"));
+        println("ENOMEM");
         debug_heap();
         exit(3);
     }
@@ -162,7 +162,7 @@ fn mrealloc(ptr:*char, new_size:int) *void {
     h:*HeapBlockHeader = ptr - @size(HeapBlockHeader);
 
     if h.free {
-        println(@ts("double free")); debug_heap(); exit(3);
+        println("double free"); debug_heap(); exit(3);
     }
     if new_size <= h.size  { return ptr; }
 
@@ -252,7 +252,7 @@ fn mfree(h:*HeapBlockHeader) {
 //// DEBUG /////
 fn fmt_hexd(num:int) String {
     out:*char = alloc(16+3);
-    hex:String = @ts("0123456789abcdef");
+    hex:String = "0123456789abcdef";
     out[0] = '0';
     out[1] = 'x';
     i:int=0;
@@ -306,38 +306,38 @@ fn fmt_decd(num:int) String {
 }
 
 fn debug_block(h:*HeapBlockHeader) {
-    print(@ts("\nBLOCK:  "));
+    print("\nBLOCK:  ");
     println(fmt_hexd(h));
-    print(@ts("\tsize: "));
+    print("\tsize: ");
     println(fmt_decd(h.size));
-    print(@ts("\tprev: "));
+    print("\tprev: ");
     println(fmt_hexd(h.free_prev));
-    print(@ts("\tnext: "));
+    print("\tnext: ");
     println(fmt_hexd(h.free_next));
-    print(@ts("\tfree: "));
-    if h.free { println(@ts("true")); }
-    if !h.free { println(@ts("false")); }
+    print("\tfree: ");
+    if h.free { println("true"); }
+    if !h.free { println("false"); }
 }
 
 fn debug_heap() {
-    print(@ts("\nGLOBAL_HEAP:  "));
+    print("\nGLOBAL_HEAP:  ");
     println(fmt_hexd(GLOBAL_HEAP));
-    print(@ts("first_free:   "));
+    print("first_free:   ");
     println(fmt_hexd(GLOBAL_HEAP.first_free));
 
     freeb:*HeapBlockHeader = GLOBAL_HEAP.first_free;
     while freeb != 0 {
-        print(@ts("\nfree block:   "));
+        print("\nfree block:   ");
         println(fmt_hexd(freeb));
-        print(@ts("\tsize: "));
+        print("\tsize: ");
         println(fmt_decd(freeb.size));
-        print(@ts("\tprev: "));
+        print("\tprev: ");
         println(fmt_hexd(freeb.free_prev));
-        print(@ts("\tnext: "));
+        print("\tnext: ");
         println(fmt_hexd(freeb.free_next));
-        print(@ts("\tfree: "));
-        if freeb.free { println(@ts("true")); }
-        if !freeb.free { println(@ts("false")); }
+        print("\tfree: ");
+        if freeb.free { println("true"); }
+        if !freeb.free { println("false"); }
         freeb = freeb.free_next;
     }
     return;

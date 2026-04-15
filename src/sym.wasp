@@ -56,7 +56,7 @@ var SSS:*ScopedSymbolStack = 0;
 fn size_of_type(t:Type) int {
     if t.kind == TYPE_KIND_STRUCT {
         sym_fill_index_if_struct(&t);
-        if t.struct_name.sym_idx >= TT.len { error(@ts("struct idx out of range")); }
+        if t.struct_name.sym_idx >= TT.len { error("struct idx out of range"); }
         return TT.structs[t.struct_name.sym_idx].sizeb;
     }
     if t.kind == TYPE_KIND_PTR { return 8; }
@@ -64,9 +64,9 @@ fn size_of_type(t:Type) int {
         if t.base == TYPE_CHAR { return 1; }
         if t.base == TYPE_BOOL { return 1; }
         if t.base == TYPE_INT  { return 8; }
-        if t.base == TYPE_VOID { error(@ts("void has no size")); }
+        if t.base == TYPE_VOID { error("void has no size"); }
     }
-    error(@ts("UNIMPLEMENTED: type kind size"));
+    error("UNIMPLEMENTED: type kind size");
     return 0;//unreachable
 }
 
@@ -92,7 +92,7 @@ fn sym_search_type(name:String) int {
         }
         i++;
     }
-    error(@ts("couldn't find type"));
+    error("couldn't find type");
     return 0;//unreachable
 }
 
@@ -115,7 +115,7 @@ fn sym_compute_type_sizes() {
                     fields_finished++;
                 }
                 if t.kind == TYPE_KIND_BASE {
-                    if t.base == TYPE_VOID { error(@ts("can't compute the size of void")); }
+                    if t.base == TYPE_VOID { error("can't compute the size of void"); }
                     if t.base == TYPE_BOOL { size_accum++; }
                     if t.base == TYPE_INT { size_accum = size_accum+8; }
                     if t.base == TYPE_CHAR { size_accum++; }
@@ -138,11 +138,11 @@ fn sym_compute_type_sizes() {
             t_i++;
         }
         if last_round_total_finished == n_finished {
-            error(@ts("couldn't resolve type sizes, maybe you have recursive definitions?"));
+            error("couldn't resolve type sizes, maybe you have recursive definitions?");
         }
         last_round_total_finished = n_finished;
     }
-    println(@ts("Success computing type sizes"));
+    println("Success computing type sizes");
 }
 
 fn sym_push_frame() {
@@ -164,7 +164,7 @@ fn sym_push_frame() {
 }
 
 fn sym_pop_frame() {
-    if SSS.len == 0 { error(@ts("can't pop from empty ScopedSymbolStack\n")); }
+    if SSS.len == 0 { error("can't pop from empty ScopedSymbolStack\n"); }
     SSS.len = SSS.len-1;
 }
 
@@ -341,8 +341,8 @@ fn sym_stack_search(name:String) int {
         i=i-1;
     }
     write(name.data, name.len);
-    println(@ts(""));
-    error(@ts("Couldn't find symbol"));
+    println("");
+    error("Couldn't find symbol");
     return 0;//unreachable
 }
 

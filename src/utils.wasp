@@ -1,12 +1,12 @@
 fn error(msg:String) {
-    print(@ts("ERROR: "));
+    print("ERROR: ");
     println(msg);
     exit(1);
 }
 
 fn assert(expr:bool) {
     if !expr {
-        println(@ts("ASSERT FAILED"));
+        println("ASSERT FAILED");
         exit(1);
     }
 }

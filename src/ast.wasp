@@ -60,6 +60,7 @@ struct AST_Expr_Lit_Bool {
 
 struct AST_Expr_Lit_String {
     text:String;
+    sym_idx:int;
 }
 
 struct AST_Expr_Lit_Char {
@@ -209,8 +210,7 @@ fn ast_new_ptr_type(inner_t:Type) Type {
 fn ast_new_string_type() Type {
     t:Type;
     t.kind = TYPE_KIND_STRUCT;
-    t.struct_name.name.data = "String";
-    t.struct_name.name.len = 6;
+    t.struct_name.name = "String";
     sym_fill_index_if_struct(&t);
     return t;
 }
@@ -223,5 +223,5 @@ fn is_type_char_ptr(t:Type) bool {
 
 fn is_type_string(t:Type) bool {
     return t.kind == TYPE_KIND_STRUCT
-        && string_eq_cstring(t.struct_name.name, "String");
+        && string_eq(t.struct_name.name, "String");
 }

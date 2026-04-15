@@ -2,9 +2,9 @@ var IND:int = 0;
 
 fn ind() {
     i:int=0;
-    println(@ts(""));
+    println("");
     while i < IND {
-        print(@ts("  "));
+        print("  ");
         i++;
     }
 }
@@ -12,73 +12,73 @@ fn ind() {
 
 fn render_type(t:Type) {
     ind();
-    print(@ts("(Type "));
+    print("(Type ");
     while t.kind == TYPE_KIND_PTR {
-        print(@ts("*"));
+        print("*");
         t = *t.ptr;
     }
     if t.kind == TYPE_KIND_STRUCT {
         write(t.struct_name.name.data,
               t.struct_name.name.len);
-        print(@ts(" tidx:("));
+        print(" tidx:(");
         print(fmt_dec(t.struct_name.sym_idx));
     }
     if t.kind == TYPE_KIND_BASE {
-        if t.base == TYPE_VOID { print(@ts("void")); }
-        if t.base == TYPE_INT  { print(@ts("int")); }
-        if t.base == TYPE_CHAR { print(@ts("char")); }
-        if t.base == TYPE_BOOL { print(@ts("bool")); }
+        if t.base == TYPE_VOID { print("void"); }
+        if t.base == TYPE_INT  { print("int"); }
+        if t.base == TYPE_CHAR { print("char"); }
+        if t.base == TYPE_BOOL { print("bool"); }
     }
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_lit_string(l:AST_Expr_Lit_String) {
-    print(@ts("(LIT_STRING '"));
+    print("(LIT_STRING '");
     write(l.text.data, l.text.len);
-    print(@ts("')"));
+    print("')");
 }
 
 fn render_lit_char(l:AST_Expr_Lit_Char) {
-    print(@ts("(LIT_CHAR '"));
+    print("(LIT_CHAR '");
     escaped:bool = false;
-    if l.value == '\0' {print(@ts("%0")); escaped=true;}
-    if l.value == '\t' {print(@ts("%t")); escaped=true;}
-    if l.value == '\n' {print(@ts("%n")); escaped=true;}
-    if l.value == '\r' {print(@ts("%r")); escaped=true;}
-    if l.value == '\'' {print(@ts("'")); escaped=true;}
+    if l.value == '\0' {print("%0"); escaped=true;}
+    if l.value == '\t' {print("%t"); escaped=true;}
+    if l.value == '\n' {print("%n"); escaped=true;}
+    if l.value == '\r' {print("%r"); escaped=true;}
+    if l.value == '\'' {print("'"); escaped=true;}
     if !escaped {
         bfr:*char = malloc(2);
         bfr[0]=l.value;
         bfr[1]='\0';
         print(to_string(bfr));
     }
-    print(@ts("')"));
+    print("')");
 }
 
 fn render_lit_int(l:AST_Expr_Lit_Int) {
-    print(@ts("(LIT_INT "));
+    print("(LIT_INT ");
     print(fmt_dec(l.value));
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_lit_bool(l:AST_Expr_Lit_Bool) {
-    print(@ts("(LIT_BOOL "));
-    if l.value == 0 { print(@ts("false")); }
-    if l.value != 0 { print(@ts("true")); }
-    print(@ts(")"));
+    print("(LIT_BOOL ");
+    if l.value == 0 { print("false"); }
+    if l.value != 0 { print("true"); }
+    print(")");
 }
 
 fn render_expr_var(v:AST_Expr_Var) {
-    print(@ts("(VAR '"));
+    print("(VAR '");
     write(v.name.data, v.name.len);
-    print(@ts("'"));
-    print(@ts(" sidx:"));
+    print("'");
+    print(" sidx:");
     print(fmt_dec(v.sym_idx));
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_expr_call(c:AST_Expr_Call) {
-    print(@ts("(CALL"));
+    print("(CALL");
     IND++;
     render_expr(*c.fun_expr);
     i:int = 0;
@@ -86,63 +86,63 @@ fn render_expr_call(c:AST_Expr_Call) {
         render_expr(c.args[i++]);
     }
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_unop(u:AST_Expr_Unop) {
     ind();
-    print(@ts("(UNOP "));
+    print("(UNOP ");
     render_op(u.op);
     IND++;
     render_expr(*u.expr);
     IND--;
-    print(@ts("')"));
+    print("')");
 }
 
 fn render_op(op:int) {
-    if op == TOK_LSQBR        { print(@ts("[]")); }
-    if op == TOK_LPAREN       { print(@ts("(call)")); }
-    if op == TOK_BANG         { print(@ts("!")); }
-    if op == TOK_TILDE        { print(@ts("~")); }
-    if op == TOK_EQUALSEQUALS { print(@ts("==")); }
-    if op == TOK_BANGEQUALS   { print(@ts("!=")); }
-    if op == TOK_GT           { print(@ts(">")); }
-    if op == TOK_GTE          { print(@ts(">=")); }
-    if op == TOK_LT           { print(@ts("<")); }
-    if op == TOK_LTE          { print(@ts("<=")); }
-    if op == TOK_AND          { print(@ts("&&")); }
-    if op == TOK_OR           { print(@ts("||")); }
-    if op == TOK_BIT_OR       { print(@ts("|")); }
-    if op == TOK_AMPERSAND    { print(@ts("&")); }
-    if op == TOK_PLUS         { print(@ts("+")); }
-    if op == TOK_MINUS        { print(@ts("-")); }
-    if op == TOK_SHIFT_LEFT   { print(@ts(">>")); }
-    if op == TOK_SHIFT_RIGHT  { print(@ts("<<")); }
-    if op == TOK_ASTERISK     { print(@ts("*")); }
-    if op == TOK_PERCENT      { print(@ts("%")); }
-    if op == TOK_SLASH        { print(@ts("/")); }
-    if op == TOK_PERIOD       { print(@ts(".")); }
+    if op == TOK_LSQBR        { print("[]"); }
+    if op == TOK_LPAREN       { print("(call)"); }
+    if op == TOK_BANG         { print("!"); }
+    if op == TOK_TILDE        { print("~"); }
+    if op == TOK_EQUALSEQUALS { print("=="); }
+    if op == TOK_BANGEQUALS   { print("!="); }
+    if op == TOK_GT           { print(">"); }
+    if op == TOK_GTE          { print(">="); }
+    if op == TOK_LT           { print("<"); }
+    if op == TOK_LTE          { print("<="); }
+    if op == TOK_AND          { print("&&"); }
+    if op == TOK_OR           { print("||"); }
+    if op == TOK_BIT_OR       { print("|"); }
+    if op == TOK_AMPERSAND    { print("&"); }
+    if op == TOK_PLUS         { print("+"); }
+    if op == TOK_MINUS        { print("-"); }
+    if op == TOK_SHIFT_LEFT   { print(">>"); }
+    if op == TOK_SHIFT_RIGHT  { print("<<"); }
+    if op == TOK_ASTERISK     { print("*"); }
+    if op == TOK_PERCENT      { print("%"); }
+    if op == TOK_SLASH        { print("/"); }
+    if op == TOK_PERIOD       { print("."); }
 }
 fn render_binop(b:AST_Expr_Binop) {
     ind();
-    print(@ts("(BINOP "));
+    print("(BINOP ");
     render_op(b.op);
     IND++;
     render_expr(*b.left);
     render_expr(*b.right);
     IND--;
-    print(@ts("')"));
+    print("')");
 }
 
 fn render_expr(e:AST_Expr) {
     ind();
-    print(@ts("(EXPR "));
+    print("(EXPR ");
     IND++;
     should_render_type:bool = true;
     if e.kind == AST_EXPR_VAR
     && e.varr.sym_idx == -1 {
         should_render_type=false;
-        print(@ts("(NOTYPE)"));
+        print("(NOTYPE)");
     }
     if should_render_type { render_type(e.ty); }
 
@@ -155,38 +155,38 @@ fn render_expr(e:AST_Expr) {
     if e.kind == AST_EXPR_UNOP       { render_unop(e.unop); }
     if e.kind == AST_EXPR_CALL       { render_expr_call(e.call); }
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_const_def(d:AST_Stmt_Declare) {
     ind();
-    print(@ts("(CONST '"));
+    print("(CONST '");
     write(d.var_name.data, d.var_name.len);
-    print(@ts("'"));
+    print("'");
     IND++;
     render_type(d.t);
     render_expr(*d.expr);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_var_def(d:AST_Stmt_Declare) {
     ind();
-    print(@ts("(VAR '"));
+    print("(VAR '");
     write(d.var_name.data, d.var_name.len);
-    print(@ts("'"));
+    print("'");
     IND++;
     render_type(d.t);
     render_expr(*d.expr);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_define(d:AST_Stmt_Declare) {
     ind();
-    print(@ts("(DEFINE '"));
+    print("(DEFINE '");
     write(d.var_name.data, d.var_name.len);
-    print(@ts("'"));
+    print("'");
     IND++;
     render_type(d.t);
     if (d.expr != 0) {
@@ -194,51 +194,51 @@ fn render_define(d:AST_Stmt_Declare) {
     }
     if d.expr == 0 {
         ind();
-        print(@ts("(NOEXPR)"));
+        print("(NOEXPR)");
     }
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 fn render_assign(a:AST_Stmt_Assign) {
     ind();
-    print(@ts("(ASSIGN "));
+    print("(ASSIGN ");
     IND++;
     render_expr(a.lvalue);
     render_expr(a.rvalue);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 fn render_if(i:AST_Stmt_If) {
     ind();
-    print(@ts("(IF "));
+    print("(IF ");
     IND++;
     render_expr(*i.cond);
     render_block(*i.block);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 fn render_while(w:AST_Stmt_While) {
     ind();
-    print(@ts("(WHILE "));
+    print("(WHILE ");
     IND++;
     render_expr(*w.cond);
     render_block(*w.block);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 fn render_return(r:AST_Stmt_Return) {
     ind();
-    print(@ts("(RETURN "));
+    print("(RETURN ");
     IND++;
     if r.expr != 0 {
         render_expr(*r.expr);
     }
     if r.expr == 0 {
         ind();
-        print(@ts("(NOEXPR)"));
+        print("(NOEXPR)");
     }
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_stmt(s:AST_Stmt) {
@@ -248,10 +248,10 @@ fn render_stmt(s:AST_Stmt) {
     if s.kind == AST_STMT_WHILE    { render_while(s.whilee); return; }
     if s.kind == AST_STMT_RETURN   { render_return(s.returnn); return; }
     if s.kind == AST_STMT_RAW_EXPR { render_expr(s.raw_expr); return; }
-    if s.kind == AST_STMT_BREAK    { print(@ts("(BREAK)")); return; }
-    if s.kind == AST_STMT_CONTINUE { print(@ts("(CONTINUE)")); return; }
+    if s.kind == AST_STMT_BREAK    { print("(BREAK)"); return; }
+    if s.kind == AST_STMT_CONTINUE { print("(CONTINUE)"); return; }
     println(fmt_hex(s.kind));
-    error(@ts("unknown stmt kind for render"));
+    error("unknown stmt kind for render");
 }
 
 fn render_block(b:Block) {
@@ -262,49 +262,49 @@ fn render_block(b:Block) {
 }
 fn render_fun_def(fun:AST_Def_Fun) {
     ind();
-    print(@ts("(FUNDEF "));
+    print("(FUNDEF ");
     write(fun.name.data, fun.name.len);
     IND++;
     i:int=0;
-    print(@ts(" nargs:"));
+    print(" nargs:");
     print(fmt_dec(fun.num_args));
     render_type(fun.return_type);
     while i < fun.num_args {
         ind();
-        print(@ts("(ARG "));
+        print("(ARG ");
         write(fun.arg_names[i].data, fun.arg_names[i].len);
         IND++;
         render_type(fun.arg_types[i]);
         IND--;
-        print(@ts(")"));
+        print(")");
         i++;
     }
     i=0;
     render_block(fun.block);
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_type_def(ts:TypeStructDef) {
     ind();
-    print(@ts("(TYPEDEF "));
+    print("(TYPEDEF ");
     write(ts.name.data, ts.name.len);
-    print(@ts(" nfields:"));
+    print(" nfields:");
     print(fmt_dec(ts.n_fields));
     IND++;
     i:int=0;
     while i < ts.n_fields {
         ind();
-        print(@ts("(FIELD "));
+        print("(FIELD ");
         write(ts.fields[i].data, ts.fields[i].len);
         IND++;
         render_type(ts.types[i]);
         IND--;
-        print(@ts(")"));
+        print(")");
         i++;
     }
     IND--;
-    print(@ts(")"));
+    print(")");
 }
 
 fn render_ast(ast:*AST) {
@@ -317,6 +317,6 @@ fn render_ast(ast:*AST) {
         if d.kind == AST_DEF_TYPE  { render_type_def(d.stru);}
         i++;
     }
-    println(@ts(""));
+    println("");
 }
 

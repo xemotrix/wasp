@@ -104,7 +104,7 @@ fn lex_peek_token(src:*char) Token {
         }
     }
     if t.type < 0 {
-        error(@ts("unknown token"));
+        error("unknown token");
     }
     t.text = string_new(src_start, text_len);
     return t;
@@ -121,38 +121,38 @@ fn lex_iden(src:*char) Token {
     t.type = -1;
 
     if c == 2 {
-        if string_eq_cstring(@ts("if"), src) { t.type = TOK_KW_IF; }
-        if string_eq_cstring(@ts("fn"), src) { t.type = TOK_KW_FN; }
+        if string_eq_cstring("if", src) { t.type = TOK_KW_IF; }
+        if string_eq_cstring("fn", src) { t.type = TOK_KW_FN; }
     }
     if c == 3 {
-        if string_eq_cstring(@ts("var"), src) { t.type = TOK_KW_VAR; }
-        if string_eq_cstring(@ts("int"), src) { t.type = TOK_TY_INT; }
+        if string_eq_cstring("var", src) { t.type = TOK_KW_VAR; }
+        if string_eq_cstring("int", src) { t.type = TOK_TY_INT; }
     }
     if c == 4 {
-        if string_eq_cstring(@ts("char"), src) { t.type = TOK_TY_CHAR; }
-        if string_eq_cstring(@ts("void"), src) { t.type = TOK_TY_VOID; }
-        if string_eq_cstring(@ts("bool"), src) { t.type = TOK_TY_BOOL; }
-        if string_eq_cstring(@ts("true"), src) { t.type = TOK_LIT_BOOL; }
+        if string_eq_cstring("char", src) { t.type = TOK_TY_CHAR; }
+        if string_eq_cstring("void", src) { t.type = TOK_TY_VOID; }
+        if string_eq_cstring("bool", src) { t.type = TOK_TY_BOOL; }
+        if string_eq_cstring("true", src) { t.type = TOK_LIT_BOOL; }
     }
     if c == 5 {
-        if string_eq_cstring(@ts("const"), src) { t.type = TOK_KW_CONST; }
-        if string_eq_cstring(@ts("while"), src) { t.type = TOK_KW_WHILE; }
-        if string_eq_cstring(@ts("break"), src) { t.type = TOK_KW_BREAK; }
-        if string_eq_cstring(@ts("false"), src) { t.type = TOK_LIT_BOOL; }
+        if string_eq_cstring("const", src) { t.type = TOK_KW_CONST; }
+        if string_eq_cstring("while", src) { t.type = TOK_KW_WHILE; }
+        if string_eq_cstring("break", src) { t.type = TOK_KW_BREAK; }
+        if string_eq_cstring("false", src) { t.type = TOK_LIT_BOOL; }
     }
     if c == 6 {
-        if string_eq_cstring(@ts("struct"), src) { t.type = TOK_KW_STRUCT; }
-        if string_eq_cstring(@ts("return"), src) { t.type = TOK_KW_RETURN; }
+        if string_eq_cstring("struct", src) { t.type = TOK_KW_STRUCT; }
+        if string_eq_cstring("return", src) { t.type = TOK_KW_RETURN; }
     }
     if c == 7 {
-        if string_eq_cstring(@ts("include"), src) {
+        if string_eq_cstring("include", src) {
             to_skip:int = lex_include(src);
             t.type = TOK_SKIP;
             t.text.len = to_skip;
         }
     }
     if c == 8 {
-        if string_eq_cstring(@ts("continue"), src) { t.type = TOK_KW_CONTINUE; }
+        if string_eq_cstring("continue", src) { t.type = TOK_KW_CONTINUE; }
     }
     if (t.type < 0) {
         if *src == '@' { t.type = TOK_BUILTIN; }
@@ -163,10 +163,10 @@ fn lex_iden(src:*char) Token {
 
 fn lex_include(src:*char) int {
     start:int = src;
-    include_str:String = @ts("include");
+    include_str:String = "include";
     src = src + include_str.len;
     while is_whitespace(*src) { src++; }
-    if *src != '"' { error(@ts("expected \" opening include")); }
+    if *src != '"' { error("expected \" opening include"); }
     src++;
 
     cap:int=256;
@@ -174,7 +174,7 @@ fn lex_include(src:*char) int {
 
     i:int = 0;
     while *src != '"' {
-        if *src == '\0' { error(@ts("expected \" closing include")); }
+        if *src == '\0' { error("expected \" closing include"); }
         if i+1 >= cap { // leave space for the final \0
             cap = cap * 2;
             bfr = mrealloc(bfr, cap);
@@ -198,7 +198,7 @@ fn lex_string(src:*char) Token {
     t.type = TOK_LIT_STRING;
     while true {
         text_len++;
-        if src[text_len] == '\0' { error(@ts("unfinished string literal")); }
+        if src[text_len] == '\0' { error("unfinished string literal"); }
         if src[text_len] == '\\' 
         && src[text_len + 1] != '\0' 
         && src[text_len + 1] == '"' {
@@ -224,11 +224,11 @@ fn lex_char(src: *char) Token {
             text_len++;
             valid_escape = true;
         }
-        if !valid_escape { error(@ts("unrecognized scaped character")); }
+        if !valid_escape { error("unrecognized scaped character"); }
     }
   
     if src[text_len] != '\'' { 
-        error(@ts("expected closing '"));
+        error("expected closing '");
     }
 
     text_len++;
@@ -282,9 +282,9 @@ struct TokenTable {
 var TOKENS:*TokenTable = 0;
 
 fn lex_file(file_name:String) {
-    print(@ts("lexing file: '"));
+    print("lexing file: '");
     print(file_name);
-    println(@ts("'"));
+    println("'");
     
     fd:int = open(file_name, 0, 0);
     f:*char = read_file(fd);
@@ -315,10 +315,10 @@ fn lex(file_name:String) {
 }
 
 fn token_next() Token {
-    if TOKENS.idx >= TOKENS.len { error(@ts("no more tokens")); }
+    if TOKENS.idx >= TOKENS.len { error("no more tokens"); }
     return TOKENS.tokens[TOKENS.idx++];
 }
 fn token_peek() Token {
-    if TOKENS.idx >= TOKENS.len { error(@ts("no more tokens")); }
+    if TOKENS.idx >= TOKENS.len { error("no more tokens"); }
     return TOKENS.tokens[TOKENS.idx];
 }
