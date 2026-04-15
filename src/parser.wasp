@@ -8,34 +8,33 @@ fn parse_var(t:Token) AST_Expr {
 
 fn parse_builtin(t:Token) AST_Expr {
     e:AST_Expr;
-    if string_eq_cstring(t.text, "@syscall") {
+    if string_eq(t.text, @ts("@syscall")) {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SYSCALL;
         return e;
     }
-    if string_eq_cstring(t.text, "@ts") {
-        println("parsed @ts");
+    if string_eq(t.text, @ts("@ts")) {
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_TS;
         return e;
     }
-    if string_eq_cstring(t.text, "@size") {
+    if string_eq(t.text, @ts("@size")) {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SIZE;
 
         t = token_next();
-        if t.type != TOK_LPAREN { error("expected '(' after @size"); }
+        if t.type != TOK_LPAREN { error(@ts("expected '(' after @size")); }
 
         t = token_next();
         e.ty = parse_type(t);
 
         t = token_next();
-        if t.type != TOK_RPAREN { error("missing ')' after @size"); }
+        if t.type != TOK_RPAREN { error(@ts("missing ')' after @size")); }
         return e;
     }
-    error("unknown builtin");
+    error(@ts("unknown builtin"));
     return e;
 }
 
@@ -86,15 +85,15 @@ fn parse_lit_string(t:Token) AST_Expr {
 fn parse_lit_bool(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_BOOL;
-    if string_eq_cstring(t.text, "true") {
+    if string_eq(t.text, @ts("true")) {
         e.lit_bool.value = 1;
         return e;
     } 
-    if string_eq_cstring(t.text, "false") {
+    if string_eq(t.text, @ts("false")) {
         e.lit_bool.value = 0;
         return e;
     }
-    error("invalid boolean literal");
+    error(@ts("invalid boolean literal"));
     return e; // unreachable
 }
 
@@ -132,7 +131,7 @@ fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
     *expr.call.fun_expr = fun_expr;
 
     t = token_next();
-    if t.type != TOK_LPAREN { error("Expected '('"); }
+    if t.type != TOK_LPAREN { error(@ts("Expected '('")); }
 
     args_cap:int = 2;
 
@@ -141,7 +140,7 @@ fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
     while true {
         t = token_next();
         if t.type == TOK_RPAREN { break; }
-        if t.type == TOK_EOF { error("Expected ')' or expression but found EOF"); }
+        if t.type == TOK_EOF { error(@ts("Expected ')' or expression but found EOF")); }
 
         if expr.call.args_len >= args_cap {
             args_cap = args_cap * 2;
@@ -152,7 +151,7 @@ fn parse_call(t:Token, fun_expr:AST_Expr) AST_Expr {
         t = token_next();
         if t.type == TOK_COMMA { continue; }
         if t.type == TOK_RPAREN { break; }
-        error("Expected ',' or ')'");
+        error(@ts("Expected ',' or ')'"));
     }
     return expr;
 }
@@ -212,7 +211,7 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
         t = token_next();
         left = parse_expr(t);
         t = token_next();
-        if t.type != TOK_RPAREN { error("Expected ')' :("); }
+        if t.type != TOK_RPAREN { error(@ts("Expected ')' :(")); }
     }
 
     pre_prec:int = prefix_prec(t.type);
@@ -249,7 +248,7 @@ fn parse_expr_with_prec(t:Token, prec:int) AST_Expr {
                 new_res.binop.right = malloc(@size(AST_Expr));
                 *new_res.binop.right = parse_expr(t);
                 t = token_next();
-                if t.type != TOK_RSQBR { error("Missing closing ']'"); }
+                if t.type != TOK_RSQBR { error(@ts("Missing closing ']'")); }
                 res = new_res;
                 continue;
             }
@@ -308,7 +307,7 @@ fn parse_type(t:Token) Type {
     if t.type == TOK_TY_CHAR { bt = TYPE_CHAR; }
     if t.type == TOK_TY_BOOL { bt = TYPE_BOOL; }
     if t.type == TOK_TY_INT { bt = TYPE_INT; }
-    if bt < 0 { error("Expected type"); }
+    if bt < 0 { error(@ts("Expected type")); }
     ty:Type = ast_new_base_type(bt);
     return ty;
 }
@@ -331,19 +330,19 @@ fn parse_stmt_define(t:Token) AST_Stmt {
         stmt.define.t = parse_type(t);
         found_type = true;
     }
-    if !found_type { error("Expected type after ':'"); }
+    if !found_type { error(@ts("Expected type after ':'")); }
 
     t = token_next();
     if t.type == TOK_SEMICOLON {
         stmt.define.expr = 0;
         return stmt;
     }
-    if t.type != TOK_EQUALS { error("Expected '=' after type in definition"); }
+    if t.type != TOK_EQUALS { error(@ts("Expected '=' after type in definition")); }
     t = token_next();
     stmt.define.expr = malloc(@size(AST_Expr));
     *stmt.define.expr = parse_expr(t);
     t = token_next();
-    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    if t.type != TOK_SEMICOLON { error(@ts("Expected ';'")); }
     return stmt;
 }
 
@@ -355,7 +354,7 @@ fn parse_stmt_assign_or_raw_expr(t:Token) AST_Stmt {
     t = token_next();
 
     if is_builtin {
-        if t.type != TOK_SEMICOLON { error("expected ';'"); }
+        if t.type != TOK_SEMICOLON { error(@ts("expected ';'")); }
         stmt.kind = AST_STMT_RAW_EXPR;
         stmt.raw_expr = lvalue;
         return stmt;
@@ -367,14 +366,14 @@ fn parse_stmt_assign_or_raw_expr(t:Token) AST_Stmt {
         return stmt;
     }
 
-    if t.type != TOK_EQUALS { error("Expected '=' or ';' after lvalue"); }
+    if t.type != TOK_EQUALS { error(@ts("Expected '=' or ';' after lvalue")); }
 
     stmt.kind = AST_STMT_ASSIGN;
     stmt.assign.lvalue = lvalue;
     t = token_next();
     stmt.assign.rvalue = parse_expr(t);
     t = token_next();
-    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    if t.type != TOK_SEMICOLON { error(@ts("Expected ';'")); }
     return stmt;
 }
 
@@ -413,7 +412,7 @@ fn parse_stmt_return(t:Token) AST_Stmt {
     stmt.returnn.expr = malloc(@size(AST_Expr));
     *stmt.returnn.expr = parse_expr(t);
     t = token_next();
-    if t.type != TOK_SEMICOLON { error("Expected ';'"); }
+    if t.type != TOK_SEMICOLON { error(@ts("Expected ';'")); }
     return stmt;
 }
 
@@ -421,13 +420,13 @@ fn parse_stmt(t:Token) AST_Stmt {
     s:AST_Stmt;
     if t.type == TOK_KW_BREAK {
         t = token_next();
-        if t.type != TOK_SEMICOLON { error("expected semicolon after break"); }
+        if t.type != TOK_SEMICOLON { error(@ts("expected semicolon after break")); }
         s.kind = AST_STMT_BREAK;
         return s;
     }
     if t.type == TOK_KW_CONTINUE {
         t = token_next();
-        if t.type != TOK_SEMICOLON { error("expected semicolon after continue"); }
+        if t.type != TOK_SEMICOLON { error(@ts("expected semicolon after continue")); }
         s.kind = AST_STMT_CONTINUE;
         return s;
     }
@@ -447,12 +446,12 @@ fn parse_stmt(t:Token) AST_Stmt {
         return parse_stmt_assign_or_raw_expr(t);
     }
 
-    error("invalid statement");
+    error(@ts("invalid statement"));
     return s; // unreachable
 }
 
 fn parse_block(t:Token) Block {
-    if t.type != TOK_LCURLY { error("Blocks should start with '{'"); }
+    if t.type != TOK_LCURLY { error(@ts("Blocks should start with '{'")); }
     b:Block;
     b.stmts_len = 0;
     b.stmt_cap = 4;
@@ -460,7 +459,7 @@ fn parse_block(t:Token) Block {
     while true {
         t = token_next();
         if t.type == TOK_RCURLY { break; }
-        if t.type == TOK_EOF { error("Expected '}' or statement"); }
+        if t.type == TOK_EOF { error(@ts("Expected '}' or statement")); }
         if b.stmts_len >= b.stmt_cap {
             b.stmt_cap = b.stmt_cap * 2;
             b.stmts = mrealloc(b.stmts, b.stmt_cap * @size(AST_Stmt));
@@ -480,7 +479,7 @@ fn parse_def_fun(t:Token) AST_Def {
     t = token_next();
     fun.name = t.text;
     t = token_next();
-    if t.type != TOK_LPAREN { error("Expected '('"); }
+    if t.type != TOK_LPAREN { error(@ts("Expected '('")); }
 
     // parse args
     arg_names_cap:int = 2;
@@ -492,8 +491,8 @@ fn parse_def_fun(t:Token) AST_Def {
     while true {
         t = token_next();
         if t.type == TOK_RPAREN { break; }
-        if t.type == TOK_EOF { error("Expected ')' or fun arg but reached EOF"); }
-        if t.type != TOK_IDEN { error("Expected Identifier"); }
+        if t.type == TOK_EOF { error(@ts("Expected ')' or fun arg but reached EOF")); }
+        if t.type != TOK_IDEN { error(@ts("Expected Identifier")); }
         if fun.num_args >= arg_names_cap {
             arg_names_cap = arg_names_cap*2;
             fun.arg_names = mrealloc(fun.arg_names, arg_names_cap * @size(String));
@@ -503,7 +502,7 @@ fn parse_def_fun(t:Token) AST_Def {
         fun.arg_names[fun.num_args] = t.text;
 
         t = token_next();
-        if t.type != TOK_COLON { error("expected ':'"); }
+        if t.type != TOK_COLON { error(@ts("expected ':'")); }
 
         t = token_next();
         ty:Type = parse_type(t);
@@ -512,7 +511,7 @@ fn parse_def_fun(t:Token) AST_Def {
         t = token_next();
         if t.type == TOK_COMMA { continue; }
         if t.type == TOK_RPAREN { break; }
-        error("Expected ',' or ')' in function signature");
+        error(@ts("Expected ',' or ')' in function signature"));
     }
 
     t = token_next();
@@ -544,7 +543,7 @@ fn parse_def_varconst(t:Token) AST_Def {
     && kind != AST_EXPR_LIT_STRING
     && kind != AST_EXPR_LIT_CHAR
     && kind != AST_EXPR_LIT_BOOL {
-        error("consts can't be anything other than literals");
+        error(@ts("consts can't be anything other than literals"));
     }
     d.global = stmt.define;
     // render_define(d.global);
@@ -555,10 +554,10 @@ fn parse_def_struct(t:Token) AST_Def {
     def:AST_Def;
     def.kind = AST_DEF_TYPE;
     t = token_next();
-    if t.type != TOK_IDEN { error("Expected identifier after 'struct'"); }
+    if t.type != TOK_IDEN { error(@ts("Expected identifier after 'struct'")); }
     def.stru.name = t.text;
     t = token_next();
-    if t.type != TOK_LCURLY { error("Expected '{' after struct identifier"); }
+    if t.type != TOK_LCURLY { error(@ts("Expected '{' after struct identifier")); }
 
     cap:int = 2;
     def.stru.fields = malloc(cap * @size(String));
@@ -573,19 +572,19 @@ fn parse_def_struct(t:Token) AST_Def {
         }
         t = token_next();
         if t.type == TOK_RCURLY { break; }
-        if t.type != TOK_IDEN { error("Expected identifier in struct definition"); }
+        if t.type != TOK_IDEN { error(@ts("Expected identifier in struct definition")); }
         def.stru.fields[n_args] = t.text;
 
         t = token_next();
         if t.type != TOK_COLON { 
             write(def.stru.name.data, def.stru.name.len);
             println(fmt_dec(t.type));
-            error("Expected ':' after identifier in struct definition"); 
+            error(@ts("Expected ':' after identifier in struct definition")); 
         }
         t = token_next();
         def.stru.types[n_args] = parse_type(t);
         t = token_next();
-        if t.type != TOK_SEMICOLON { error("Expected ';' after type in struct definition"); }
+        if t.type != TOK_SEMICOLON { error(@ts("Expected ';' after type in struct definition")); }
         n_args++;
     }
 
@@ -600,7 +599,7 @@ fn parse_def(t:Token) AST_Def {
     if t.type == TOK_KW_STRUCT { return parse_def_struct(t); }
     if t.type == TOK_KW_FN { return parse_def_fun(t); }
   
-    error("Expected function definition starting with fn");
+    error(@ts("Expected function definition starting with fn"));
     d:AST_Def; // unreachable
     return d;
 }

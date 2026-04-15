@@ -10,6 +10,17 @@ fn to_string(data:*char) String {
     return s;
 }
 
+fn to_cstring(str:String) *char {
+    s:*char = malloc(str.len+1);
+    i:int = 0;
+    while i < str.len {
+        s[i] = str.data[i];
+        i++;
+    }
+    s[i] = '\0';
+    return s;
+}
+
 fn string_new(data:*char, len:int) String {
     s:String;
     s.data = data;
@@ -29,8 +40,6 @@ fn string_eq(a:String, b:String) bool {
 }
 
 fn string_eq_cstring(s:String, cs:*char) bool {
-    c_len:int = strlen(cs);
-    if c_len != s.len { return false; }
     i:int = 0;
     while i < s.len {
         if s.data[i] != cs[i] { return false; }

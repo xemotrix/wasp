@@ -123,18 +123,18 @@ fn check_heap_health(){
     current_block:*HeapBlockHeader = GLOBAL_HEAP.first_free;
     while true {
         if current_block.size == 0 {
-            println("hecatombe size 0");
+            println(@ts("hecatombe size 0"));
             exit(33);
         }
         if current_block.free_next == 0 {
             break;
         }
         if current_block + current_block.size > current_block.free_next {
-            println("hecatombe wrong size");
+            println(@ts("hecatombe wrong size"));
             exit(33);
         }
         if current_block.free_next.free_prev != current_block {
-            println("hecatombe bad back pointer");
+            println(@ts("hecatombe bad back pointer"));
             exit(33);
         }
         current_block = current_block.free_next;
@@ -149,7 +149,7 @@ fn malloc(sizeb:int) *void {
     if fb == 0 {
         // no free space usable (with hard limit)
         // TODO: expand
-        println("ENOMEM");
+        println(@ts("ENOMEM"));
         debug_heap();
         exit(3);
     }
@@ -162,7 +162,7 @@ fn mrealloc(ptr:*char, new_size:int) *void {
     h:*HeapBlockHeader = ptr - @size(HeapBlockHeader);
 
     if h.free {
-        println("double free"); debug_heap(); exit(3);
+        println(@ts("double free")); debug_heap(); exit(3);
     }
     if new_size <= h.size  { return ptr; }
 
@@ -250,9 +250,9 @@ fn mfree(h:*HeapBlockHeader) {
 }
 
 //// DEBUG /////
-fn fmt_hexd(num:int) *char {
+fn fmt_hexd(num:int) String {
     out:*char = alloc(16+3);
-    hex:*char = "0123456789abcdef";
+    hex:String = @ts("0123456789abcdef");
     out[0] = '0';
     out[1] = 'x';
     i:int=0;
@@ -261,13 +261,13 @@ fn fmt_hexd(num:int) *char {
     while i < 16 {
         shift = (15-i) * 4;
         idx = (num>>shift)&15;
-        out[i+2] = hex[idx];
+        out[i+2] = hex.data[idx];
         i++;
     }
     out[16+3] = '\0';
-    return out;
+    return to_string(out);
 }
-fn fmt_decd(num:int) *char {
+fn fmt_decd(num:int) String {
     out:*char = alloc(21);
     idx:int = 0;
     if num < 0 {
@@ -277,7 +277,7 @@ fn fmt_decd(num:int) *char {
     if num == 0 {
         out[0] = '0';
         out[1] = '\0';
-        return out;
+        return to_string(out);
     }
     start:int = idx;
     while num != 0 {
@@ -302,42 +302,42 @@ fn fmt_decd(num:int) *char {
         out[end--] = aux;
     }
     out[idx] = '\0';
-    return out;
+    return to_string(out);
 }
 
 fn debug_block(h:*HeapBlockHeader) {
-    print("\nBLOCK:  ");
+    print(@ts("\nBLOCK:  "));
     println(fmt_hexd(h));
-    print("\tsize: ");
+    print(@ts("\tsize: "));
     println(fmt_decd(h.size));
-    print("\tprev: ");
+    print(@ts("\tprev: "));
     println(fmt_hexd(h.free_prev));
-    print("\tnext: ");
+    print(@ts("\tnext: "));
     println(fmt_hexd(h.free_next));
-    print("\tfree: ");
-    if h.free { println("true"); }
-    if !h.free { println("false"); }
+    print(@ts("\tfree: "));
+    if h.free { println(@ts("true")); }
+    if !h.free { println(@ts("false")); }
 }
 
 fn debug_heap() {
-    print("\nGLOBAL_HEAP:  ");
+    print(@ts("\nGLOBAL_HEAP:  "));
     println(fmt_hexd(GLOBAL_HEAP));
-    print("first_free:   ");
+    print(@ts("first_free:   "));
     println(fmt_hexd(GLOBAL_HEAP.first_free));
 
     freeb:*HeapBlockHeader = GLOBAL_HEAP.first_free;
     while freeb != 0 {
-        print("\nfree block:   ");
+        print(@ts("\nfree block:   "));
         println(fmt_hexd(freeb));
-        print("\tsize: ");
+        print(@ts("\tsize: "));
         println(fmt_decd(freeb.size));
-        print("\tprev: ");
+        print(@ts("\tprev: "));
         println(fmt_hexd(freeb.free_prev));
-        print("\tnext: ");
+        print(@ts("\tnext: "));
         println(fmt_hexd(freeb.free_next));
-        print("\tfree: ");
-        if freeb.free { println("true"); }
-        if !freeb.free { println("false"); }
+        print(@ts("\tfree: "));
+        if freeb.free { println(@ts("true")); }
+        if !freeb.free { println(@ts("false")); }
         freeb = freeb.free_next;
     }
     return;

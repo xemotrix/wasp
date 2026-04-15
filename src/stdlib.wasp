@@ -33,14 +33,13 @@ fn write(str:*char, len:int) int {
     return @syscall(SYS_WRITE, STDOUT, str, len);
 }
 
-fn print(str:*char) {
-    len:int = strlen(str);
-    write(str, len);
+fn print(str:String) {
+    write(str.data, str.len);
 }
 
-fn println(str:*char) {
+fn println(str:String) {
     print(str);
-    print("\n");
+    print(@ts("\n"));
 }
 
 fn exit(code:int) {
@@ -67,8 +66,8 @@ fn mmap(size:int) int {
     return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
 }
 
-fn open(filename:*char, flags:int, mode:int) int {
-    return @syscall(SYS_OPEN, filename, flags, mode);
+fn open(filename:String, flags:int, mode:int) int {
+    return @syscall(SYS_OPEN, to_cstring(filename), flags, mode);
 }
 
 fn close(fd:int) int {
@@ -81,7 +80,7 @@ fn read(fd:int, buf:*char, count:int) int {
 
 fn read_file(fd:int) *char {
     if fd < 0 {
-        println("Error reading file");
+        println(@ts("Error reading file"));
         exit(1);
     }
     buf:*char = malloc(4096*100);
@@ -90,7 +89,7 @@ fn read_file(fd:int) *char {
     while true {
         bread:int = read(fd, buf+chunk_c*to_read, to_read);
         if bread == 0 && chunk_c == 0 {
-            println("No bytes read :(");
+            println(@ts("No bytes read :("));
             exit(1);
         }
         if bread != to_read { break; }
@@ -99,7 +98,7 @@ fn read_file(fd:int) *char {
     return buf;
 }
 
-fn fmt_dec(num:int) *char {
+fn fmt_dec(num:int) String {
     out:*char = malloc(21);
     idx:int = 0;
     if num < 0 {
@@ -107,9 +106,7 @@ fn fmt_dec(num:int) *char {
         num = -num;
     }
     if num == 0 {
-        out[0] = '0';
-        out[1] = '\0';
-        return out;
+        return @ts("0");
     }
     start:int = idx;
     while num != 0 {
@@ -134,12 +131,12 @@ fn fmt_dec(num:int) *char {
         out[end--] = aux;
     }
     out[idx] = '\0';
-    return out;
+    return to_string(out);
 }
 
-fn fmt_hex(num:int) *char {
+fn fmt_hex(num:int) String {
     out:*char = malloc(16+3);
-    hex:*char = "0123456789abcdef";
+    hex:String = @ts("0123456789abcdef");
     out[0] = '0';
     out[1] = 'x';
     i:int=0;
@@ -148,24 +145,23 @@ fn fmt_hex(num:int) *char {
     while i < 16 {
         shift = (15-i) * 4;
         idx = (num>>shift)&15;
-        out[i+2] = hex[idx];
+        out[i+2] = hex.data[idx];
         i++;
     }
     out[16+3] = '\0';
-    return out;
+    return to_string(out);
 }
 
-fn strcat(a:*char, b:*char) *char {
-    lena:int = strlen(a);
-    lenb:int = strlen(b);
-    new:*char = malloc(lena+lenb+1);
-    ptr:*char = new;
+fn strcat(a:String, b:String) String {
+    s:String;
+    s.len = a.len+b.len;
+    s.data = malloc(s.len);
+    ptr:*char = s.data;
     i:int = 0;
-    while i < lena { *(ptr++) = a[i++]; }
+    while i < a.len { *(ptr++) = a.data[i++]; }
     i = 0;
-    while i < lenb { *(ptr++) = b[i++]; }
-    *ptr = '\0';
-    return new;
+    while i < b.len { *(ptr++) = b.data[i++]; }
+    return s;
 }
 
 fn streq(a:*char, b:*char, len:int) bool {
