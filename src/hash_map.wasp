@@ -1,0 +1,84 @@
+
+struct HashMapEntry {
+    key: String;
+    value: *void;
+    next: *HashMapEntry;
+}
+
+struct HashMap {
+    arena:*ArenaHeader;
+    entries:*HashMapEntry;
+    n_entries:int;
+    elt_size:int;
+}
+
+
+// djb2
+fn hash_string(s:String) int {
+    hash:int = 5381;
+    i:int = 0;
+    while i < s.len {
+        c:int = char_to_int(s.data[i]);
+        hash = ((hash << 5) + hash) + c;
+        i++;
+    }
+    return hash;
+}
+
+fn hm_new(n_entries:int, elt_size:int) HashMap {
+    hm:HashMap;
+    hm.arena = arena_new(2*n_entries*@size(HashMapEntry)); 
+    hm.entries = aalloc(hm.arena, n_entries*@size(HashMapEntry));
+    hm.n_entries = n_entries;
+    hm.elt_size = elt_size;
+    return hm;
+}
+
+fn hm_destroy(hm:HashMap) {
+    afree(hm.arena);
+}
+
+fn hm_get(hm:HashMap, key:String) *void {
+    hash:int = hash_string(key);
+    idx:int = hash % hm.n_entries;
+    entry:*HashMapEntry = &hm.entries[idx];
+    if entry.value == 0 { return 0; }
+
+    while true {
+        if string_eq(entry.key, key) { return entry.value; }
+        if entry.next == 0 { return 0; }
+        entry = entry.next;
+    }
+    // unreachable
+    return 0;
+}
+
+fn hm_set(hm:HashMap, key:String, value:*void) {
+    if value == 0 { error("invalid null pointer as HashMap value"); }
+    hash:int = hash_string(key);
+    idx:int = hash % hm.n_entries;
+    entry:*HashMapEntry = &hm.entries[idx];
+    is_overwrite:bool = false;
+    while entry.value != 0 {
+        if string_eq(entry.key, key) {
+            is_overwrite=true;
+            break;
+        }
+        entry.next = aalloc(hm.arena, @size(HashMapEntry));
+        entry = entry.next;
+        entry.next = 0; // not really needed?
+    }
+    if !is_overwrite {
+        entry.key = key;
+        entry.value = aalloc(hm.arena, hm.elt_size);
+    }
+
+    value_dst_ptr:*char = entry.value;
+    value_src_ptr:*char = value;
+
+    i:int = 0;
+    while i < hm.elt_size {
+        value_dst_ptr[i] = value_src_ptr[i];
+        i++;
+    }
+}

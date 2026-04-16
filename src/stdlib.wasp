@@ -173,3 +173,8 @@ fn streq(a:*char, b:*char, len:int) bool {
     }
     return true;
 } 
+
+fn char_to_int(c:char) int {
+    hack:*int = &c;
+    return *hack & 255;
+}

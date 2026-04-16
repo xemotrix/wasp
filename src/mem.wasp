@@ -27,6 +27,53 @@ fn free(ptr:*int) int {
     return munmap(ptr-8, size+8);
 }
 
+/// arena allocator ///
+
+const PAGE_SIZE:int = 4096;
+
+struct ArenaHeader {
+    size: int;
+    idx: int;
+    next_block: *ArenaHeader;
+}
+
+fn arena_new(intial_size:int) *ArenaHeader {
+    intial_size = intial_size + @size(ArenaHeader);
+    ptr:*ArenaHeader = mmap(intial_size);
+    ptr.size = intial_size;
+    ptr.idx = @size(ArenaHeader);
+    ptr.next_block = 0;
+    return ptr;
+}
+
+fn aalloc(arena:*ArenaHeader, sizeb:int) *void {
+    while arena.next_block != 0 {
+        arena = arena.next_block;
+    }
+    if sizeb + @size(ArenaHeader) > arena.size {
+        // TODO: allocate bock of custom size
+        error("can't allocate element of size greater than the arena block size");
+    }
+    if arena.idx + sizeb >= arena.size {
+        arena.next_block = mmap(arena.size * 2);
+        arena.next_block.size = arena.size * 2;
+        arena.next_block.idx = @size(ArenaHeader);
+        arena.next_block.next_block = 0;
+        arena = arena.next_block;
+    }
+    ptr:*void = arena + arena.idx;
+    arena.idx = arena.idx + sizeb;
+
+    return ptr;
+}
+
+fn afree(arena:*ArenaHeader) {
+    if arena.next_block != 0 {
+        afree(arena.next_block);
+    }
+    munmap(arena, arena.size);
+}
+
 /// freelist heap allocator ///
 
 struct HeapHeader {

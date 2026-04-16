@@ -39,16 +39,18 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-- better error reporting;
+- arena allocator -> hash map
+- better error reportng;
 
 ### NTH
 - SSA IR
 - stack spillout for >6 function arguments;
 - move more stuff to intrinsics? (assembly);
-- string struct? so dont have to pass len + text everyfuckingwhere
 - for loops?;
 - hex literals;
 
 ### MAYBE
+- stack array?
+- array literals?
 - extern?
 - stricter implicit casting? (so more type errors);
