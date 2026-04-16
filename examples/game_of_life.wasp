@@ -1,120 +1,39 @@
-const SYS_WRITE:int = 1;
-const SYS_MMAP:int   = 9;
-const SYS_MUNMAP:int = 11;
+include "src/stdlib.wasp"
+include "src/strings.wasp"
+include "src/utils.wasp"
+include "src/mem.wasp"
+
 const SYS_GETRANDOM:int = 318;
-
-const PROT_READ:int     = 1;
-const PROT_WRITE:int    = 3;
-const MAP_PRIVATE:int   = 2;
-const MAP_ANONYMOUS:int = 32;
-
-const STDOUT:int = 1;
-
-fn write(str:*char, len:int) int {
-    return @syscall(SYS_WRITE, STDOUT, str, len);
-}
-
-fn strlen(str:*char) int {
-    i:int = 0;
-    while str[i] != '\0' { i = i+1; }
-    return i;
-}
-
-fn print(str:*char) {
-    write(str, strlen(str));
-}
-
-fn munmap(addr:int, size:int) int {
-    return @syscall(SYS_MUNMAP, addr, size);
-}
-
-fn mmap(size:int) int {
-    fd:int = -1;
-    offset:int = 0;
-    addr:int=0;
-    return @syscall(SYS_MMAP,addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,fd,offset);
-}
-
-fn alloc(size:int) int {
-    ptr:*int = mmap(size+8);
-    *ptr = size;
-    return ptr+8;
-}
-
-fn free(ptr:*int) int {
-    size:int = ptr[-8];
-    return munmap(ptr-8, size+8);
-}
-
-fn fmt_dec(num:int) *char {
-    out:*char = alloc(20);
-    idx:int = 0;
-    if num < 0 {
-        out[idx] = '-';
-        num = -num;
-        idx=idx+1;
-    }
-    if num == 0 {
-        out[0] = '0';
-        return out;
-    }
-    start:int = idx;
-    while num != 0 {
-        mod:int = num % 10;
-        // no casting between int and char yet :(
-        if mod == 0 { out[idx] = '0'; }
-        if mod == 1 { out[idx] = '1'; }
-        if mod == 2 { out[idx] = '2'; }
-        if mod == 3 { out[idx] = '3'; }
-        if mod == 4 { out[idx] = '4'; }
-        if mod == 5 { out[idx] = '5'; }
-        if mod == 6 { out[idx] = '6'; }
-        if mod == 7 { out[idx] = '7'; }
-        if mod == 8 { out[idx] = '8'; }
-        if mod == 9 { out[idx] = '9'; }
-        idx = idx+1;
-        num = num / 10;
-    }
-    end:int = idx-1;
-    while start < end {
-        aux:char = out[start];
-        out[start] = out[end];
-        out[end] = aux;
-        start=start+1;
-        end=end-1;
-    }
-    return out;
-}
 
 fn draw_table() {
     i:int = 0;
     while i < SIZEY {
-        print(BOARD[i]); print("\n");
-        i=i+1;
+        println(BOARD[i]);
+        i++;
     }
 }
 
 fn alive(y:int, x:int) bool {
     if y < 0 || y >= SIZEY { return false; }
     if x < 0 || x >= SIZEX { return false; }
-    return BOARD[y][x] == '#';
+    return BOARD[y].data[x] == '#';
 }
 
 fn alive_neigs(y:int, x:int) int {
     count:int = 0;
-    if alive(y-1, x-1) { count=count+1; }
-    if alive(y-1, x)   { count=count+1; }
-    if alive(y-1, x+1) { count=count+1; }
-    if alive(y, x-1)   { count=count+1; }
-    if alive(y, x+1)   { count=count+1; }
-    if alive(y+1, x-1) { count=count+1; }
-    if alive(y+1, x)   { count=count+1; }
-    if alive(y+1, x+1) { count=count+1; }
+    if alive(y-1, x-1) { count++; }
+    if alive(y-1, x)   { count++; }
+    if alive(y-1, x+1) { count++; }
+    if alive(y, x-1)   { count++; }
+    if alive(y, x+1)   { count++; }
+    if alive(y+1, x-1) { count++; }
+    if alive(y+1, x)   { count++; }
+    if alive(y+1, x+1) { count++; }
     return count;
 }
 
 fn iter() {
-    nextb:**char = init_board();
+    nextb:*String = init_board();
     i:int = 0;
     while i < SIZEY {
         j:int = 0;
@@ -122,46 +41,43 @@ fn iter() {
             aneigs:int = alive_neigs(i,j);
             is_alive:bool = alive(i,j);
             if is_alive {
-                if aneigs < 2 { nextb[i][j] = '.'; } 
-                if aneigs >= 2 && aneigs <= 3 { nextb[i][j] = '#'; } 
-                if aneigs > 3 { nextb[i][j] = '.'; } 
+                if aneigs < 2 { nextb[i].data[j] = '.'; } 
+                if aneigs >= 2 && aneigs <= 3 { nextb[i].data[j] = '#'; } 
+                if aneigs > 3 { nextb[i].data[j] = '.'; } 
             }
             if !is_alive {
-                if aneigs == 3 { nextb[i][j] = '#'; } 
-                if aneigs != 3 { nextb[i][j] = '.'; } 
+                if aneigs == 3 { nextb[i].data[j] = '#'; } 
+                if aneigs != 3 { nextb[i].data[j] = '.'; } 
             }
-            j=j+1;
+            j++;
         }
-        i=i+1;
+        i++;
     }
-    // not efficient to allocate and deallocate on each
-    // iteration, but its a good way to test alloc and free
-    free(BOARD); 
+    mfree(BOARD); 
     BOARD = nextb;
 }
 
-fn init_board() **char {
-    board:**char = alloc(SIZEY*@size(*char));
+fn init_board() *String {
+    board:*String = malloc(SIZEY*@size(String));
     i:int = 0;
     while i < SIZEY {
-        board[i] = alloc(SIZEX*@size(char) + 1);
+        board[i] = string_new(malloc(SIZEX*@size(char)), SIZEX);
         j:int = 0;
         while j < SIZEX {
-            board[i][j] = '.';
+            board[i].data[j] = '.';
             rand:int = 0;
             @syscall(SYS_GETRANDOM, &rand, 8, 0);
             if rand % 7 == 0 {
-                board[i][j] = '#';
+                board[i].data[j] = '#';
             }
-            j=j+1;
+            j++;
         }
-        board[i][SIZEX] = '\0';
-        i=i+1;
+        i++;
     }
     return board;
 }
 
-var BOARD:**char = 0;
+var BOARD:*String = 0;
 var SIZEY:int = 50;
 var SIZEX:int = 100;
 
@@ -169,7 +85,7 @@ fn main() int {
     BOARD = init_board();
     draw_table();
     while true {
-        print("====================="); print("\n");
+        println("=====================");
         iter();
         draw_table();
     }
