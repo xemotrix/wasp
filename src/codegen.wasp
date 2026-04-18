@@ -282,7 +282,7 @@ fn cg_unop(unop:AST_Expr_Unop, t:Type) {
         cg_expr(*unop.expr);
         pop("rax");
         xor("rbx", "rbx");
-        cmp("rax", "0");
+        cmp("al", "0");
         sete("bl");
         push("rbx");
         return;
