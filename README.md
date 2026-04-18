@@ -39,7 +39,6 @@ ld out.o -o out
 ## TODO
 
 ### IMPORTANT
-- arena allocator -> hash map
 - better error reportng;
 
 ### NTH
