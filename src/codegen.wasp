@@ -847,7 +847,7 @@ fn cg_stmt(stmt:AST_Stmt, break_lbl:String, continue_lbl:String) {
     if stmt.kind == AST_STMT_IF{
         cg_expr(*stmt.iff.cond);
         iflbl:String = if_lbl(cg_lbl());
-        pop("ax");
+        pop("rax");
         cmp("al", "0");
         je(iflbl);
         cg_block(*stmt.iff.block, break_lbl, continue_lbl);
