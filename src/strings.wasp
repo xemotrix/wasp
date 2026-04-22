@@ -28,17 +28,6 @@ fn string_new(data:*char, len:int) String {
     return s;
 }
 
-fn string_eq(a:String, b:String) bool {
-    if a.len != b.len { return false; }
-    if a.data == b.data { return true; }
-    i:int = 0;
-    while i < a.len {
-        if a.data[i] != b.data[i] { return false; }
-        i++;
-    }
-    return true;
-}
-
 fn string_eq_cstring(s:String, cs:*char) bool {
     i:int = 0;
     while i < s.len {

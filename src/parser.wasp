@@ -8,18 +8,18 @@ fn parse_var(t:Token) AST_Expr {
 
 fn parse_builtin(t:Token) AST_Expr {
     e:AST_Expr;
-    if string_eq(t.text, "@syscall") {
+    if t.text == "@syscall" {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SYSCALL;
         return e;
     }
-    if string_eq(t.text, "@ts") {
+    if t.text == "@ts" {
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_TS;
         return e;
     }
-    if string_eq(t.text, "@size") {
+    if t.text == "@size" {
         // just a builtin var and parse the rest as normal expression
         e.kind = AST_EXPR_BUILTIN;
         e.builtin = BUILTIN_SIZE;
@@ -85,11 +85,11 @@ fn parse_lit_string(t:Token) AST_Expr {
 fn parse_lit_bool(t:Token) AST_Expr {
     e:AST_Expr;
     e.kind = AST_EXPR_LIT_BOOL;
-    if string_eq(t.text, "true") {
+    if t.text == "true" {
         e.lit_bool.value = 1;
         return e;
     } 
-    if string_eq(t.text, "false") {
+    if t.text == "false" {
         e.lit_bool.value = 0;
         return e;
     }

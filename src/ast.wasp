@@ -223,5 +223,5 @@ fn is_type_char_ptr(t:Type) bool {
 
 fn is_type_string(t:Type) bool {
     return t.kind == TYPE_KIND_STRUCT
-        && string_eq(t.struct_name.name, "String");
+        && t.struct_name.name == "String";
 }

@@ -45,7 +45,7 @@ fn hm_get(hm:HashMap, key:String) *void {
     if entry.value == 0 { return 0; }
 
     while true {
-        if string_eq(entry.key, key) { return entry.value; }
+        if entry.key == key { return entry.value; }
         if entry.next == 0 { return 0; }
         entry = entry.next;
     }
@@ -60,7 +60,7 @@ fn hm_set(hm:HashMap, key:String, value:*void) {
     entry:*HashMapEntry = &hm.entries[idx];
     is_overwrite:bool = false;
     while entry.value != 0 {
-        if string_eq(entry.key, key) {
+        if entry.key == key {
             is_overwrite=true;
             break;
         }

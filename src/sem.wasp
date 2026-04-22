@@ -107,7 +107,7 @@ fn tc_access(access:*AST_Expr_Binop) Type {
     i:int = 0;
     while i < ts.n_fields {
         sym_fill_index_if_struct(&ts.types[i]);
-        if !string_eq(ts.fields[i], access.right.varr.name) {
+        if ts.fields[i] != access.right.varr.name {
             accum_offset = accum_offset+size_of_type(ts.types[i]);
             i++;
             continue;

@@ -87,7 +87,7 @@ fn sym_search_type(name:String) int {
     i:int = 0;
     while i < TT.len {
         t:TypeStructDef = TT.structs[i];
-        if string_eq(t.name, name) {
+        if t.name == name {
             return i;
         }
         i++;
@@ -333,7 +333,7 @@ fn sym_stack_search(name:String) int {
         f:SSSFrame = SSS.frames[i];
         j:int = f.len -1;
         while j >= 0 {
-            if string_eq(name, f.entries[j].name) {
+            if name == f.entries[j].name {
                 return f.entries[j].sym_idx;
             }
             j=j-1;

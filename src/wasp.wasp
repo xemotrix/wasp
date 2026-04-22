@@ -35,7 +35,7 @@ fn parse_flags(argc:int, argv:**char) Flags {
 
     flag:String = to_string(argv[2]);
 
-    if !string_eq(flag, "-o") { error_usage(); }
+    if flag != "-o" { error_usage(); }
 
     f.output_file = to_string(argv[3]);
 

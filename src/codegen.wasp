@@ -72,6 +72,7 @@ fn write_nl() {
 fn syscall_() { write_ins1("syscall"); }
 fn cqo() { write_ins1("cqo"); }
 fn rep_movsb() { write_ins1("rep movsb"); }
+fn repe_cmpsb() { write_ins1("repe cmpsb"); }
 fn ret() { write_ins1("ret"); }
 
 fn jnz(val:String) { write_ins2("jnz", val); }
@@ -94,6 +95,7 @@ fn not(val:String) { write_ins2("not", val); }
 fn neg(val:String) { write_ins2("neg", val); }
 fn idiv(dst:String) { write_ins2("idiv", dst); }
 fn je(dst:String) { write_ins2("je", dst); }
+fn jne(dst:String) { write_ins2("jne", dst); }
 fn jmp(dst:String) { write_ins2("jmp", dst); }
  
 fn test(dst:String, src:String) { write_ins3("test", strcat(dst, ","), src); }
@@ -120,10 +122,12 @@ fn bool_lbl(num:int) String {
     return strcat("BOOL_", fmt_dec(num));
 }
 
+fn generic_lbl(num:int) String {
+    return strcat("LBL_", fmt_dec(num));
+}
 fn if_lbl(num:int) String {
     return strcat("IF_", fmt_dec(num));
 }
-
 fn while_cond_lbl(num:int) String {
     return strcat("WHC_", fmt_dec(num));
 }
@@ -351,6 +355,37 @@ fn cg_subscript(binop:AST_Expr_Binop, t:Type) {
     }
 }
 
+fn cg_string_cmp(binop:AST_Expr_Binop, op:int) {
+    cg_expr(*binop.left);
+    cg_expr(*binop.right);
+    pop("rax");
+    pop("rbx");
+    end_lbl:String = generic_lbl(cg_lbl());
+    early_lbl:String = generic_lbl(cg_lbl());
+
+    // cmp lens
+    mov_s("QWORD", "rcx", offset_plus("rax", 8));
+    mov_s("QWORD", "rdx", offset_plus("rbx", 8));
+    cmp("rcx", "rdx");
+    jne(early_lbl);
+
+    xor("rdx", "rdx");
+    // rcx = len
+    mov_s("QWORD", "rsi", deref("rax"));
+    mov_s("QWORD", "rdi", deref("rbx"));
+    repe_cmpsb();
+    if op == TOK_BANGEQUALS { setne("dl"); }
+    if op == TOK_EQUALSEQUALS { sete("dl"); }
+    push("rdx");
+    jmp(end_lbl);
+
+    cg_label(early_lbl);
+    if op == TOK_BANGEQUALS   { push("1"); }
+    if op == TOK_EQUALSEQUALS { push("0"); }
+
+    cg_label(end_lbl);
+}
+
 fn cg_binop(binop:AST_Expr_Binop, t:Type) {
     if binop.op == TOK_PERIOD { cg_access(binop, t); return; }
     if binop.op == TOK_LSQBR { cg_subscript(binop, t); return; }
@@ -376,7 +411,14 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
                                // the right on the stack
         cg_label(if_end_lbl);
         return;
-	}
+    }
+    if (binop.op == TOK_EQUALSEQUALS
+        || binop.op == TOK_BANGEQUALS)
+    && is_type_string(binop.left.ty) 
+    && is_type_string(binop.right.ty) {
+        cg_string_cmp(binop, binop.op);
+        return;
+    }
     
     cg_expr(*binop.left);
     cg_expr(*binop.right);
@@ -402,41 +444,41 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
         cmp(reg_a, reg_b);
         setne("cl");
         op_type = OPTYPE_BOOL;
-	}
+    }
     if binop.op == TOK_GT {
         xor("rcx", "rcx");
         cmp(reg_a, reg_b);
         setg("cl");
         op_type = OPTYPE_BOOL;
-	}
+    }
     if binop.op == TOK_GTE {
         xor("rcx", "rcx");
         cmp(reg_a, reg_b);
         setge("cl");
         op_type = OPTYPE_BOOL;
-	}
+    }
     if binop.op == TOK_LT {
         xor("rcx", "rcx");
         cmp(reg_a, reg_b);
         setl("cl");
         op_type = OPTYPE_BOOL;
-	}
+    }
     if binop.op == TOK_LTE {
         xor("rcx", "rcx");
         cmp(reg_a, reg_b);
         setle("cl");
         op_type = OPTYPE_BOOL;
-	}
+    }
     if binop.op == TOK_SHIFT_LEFT {
         mov("rcx", "rbx");
         shl(reg_a, "cl");
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_SHIFT_RIGHT {
         mov("rcx", "rbx");
         shr(reg_a, "cl");
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_AMPERSAND {
         and(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
@@ -444,19 +486,19 @@ fn cg_binop(binop:AST_Expr_Binop, t:Type) {
     if binop.op == TOK_BIT_OR {
         or(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_PLUS {
         add(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_MINUS {
         sub(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_ASTERISK {
         imul(reg_a, reg_b);
         op_type = OPTYPE_ARITH;
-	}
+    }
     if binop.op == TOK_SLASH {
         cqo();// sign extend rax to RDX {RAX
         idiv("rbx");
