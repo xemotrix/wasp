@@ -3,19 +3,6 @@ const SIZE_WORD:int  = 1;
 const SIZE_DWORD:int = 2;
 const SIZE_QWORD:int = 3;
 
-fn make_ins2(a:String, b:String) String {
-    return strcat(strcat(a, " "), b);
-}
-fn make_ins3(a:String, b:String, c:String) String {
-    return make_ins2(make_ins2(a, b), c);
-}
-fn make_ins4(a:String, b:String, c:String, d:String) String {
-    return make_ins2(make_ins3(a, b, c), d);
-}
-fn make_ins5(a:String, b:String, c:String, d:String, e:String) String {
-    return make_ins2(make_ins4(a, b, c, d), e);
-}
-
 fn write_to_disk(fd:int) {
     write_to(fd, CODE_BUFFER.text, CODE_BUFFER.len);
 }
@@ -39,26 +26,43 @@ fn write_char(c:char) {
     s.data[0] = c;
     s.len = 1;
     write_arbitrary(s);
+    mfree(s.data);
 }
 
-fn write_ins(ins:String) {
-    str:String=strcat(strcat("\t", ins), "\n");
-    write_arbitrary(str);
-}
-fn write_ins1(a:String) {
-    write_ins(a);
+fn write_ins(a:String) {
+    write_arbitrary("\t");
+    write_arbitrary(a);
+    write_arbitrary("\n");
 }
 fn write_ins2(a:String, b:String) {
-    write_ins(make_ins2(a,b));
+    write_arbitrary("\t");
+    write_arbitrary(a); write_arbitrary(" ");
+    write_arbitrary(b);
+    write_arbitrary("\n");
 }
 fn write_ins3(a:String, b:String, c:String) {
-    write_ins(make_ins3(a,b,c));
+    write_arbitrary("\t");
+    write_arbitrary(a); write_arbitrary(" ");
+    write_arbitrary(b); write_arbitrary(" ");
+    write_arbitrary(c);
+    write_arbitrary("\n");
 }
 fn write_ins4(a:String, b:String, c:String, d:String) {
-    write_ins(make_ins4(a,b,c,d));
+    write_arbitrary("\t");
+    write_arbitrary(a); write_arbitrary(" ");
+    write_arbitrary(b); write_arbitrary(" ");
+    write_arbitrary(c); write_arbitrary(" ");
+    write_arbitrary(d);
+    write_arbitrary("\n");
 }
 fn write_ins5(a:String, b:String, c:String, d:String, e:String) {
-    write_ins(make_ins5(a,b,c,d,e));
+    write_arbitrary("\t");
+    write_arbitrary(a); write_arbitrary(" ");
+    write_arbitrary(b); write_arbitrary(" ");
+    write_arbitrary(c); write_arbitrary(" ");
+    write_arbitrary(d); write_arbitrary(" ");
+    write_arbitrary(e);
+    write_arbitrary("\n");
 }
 
 fn write_lbl(lbl:String) {
@@ -69,11 +73,11 @@ fn write_nl() {
     write_arbitrary("\n");
 }
 
-fn syscall_() { write_ins1("syscall"); }
-fn cqo() { write_ins1("cqo"); }
-fn rep_movsb() { write_ins1("rep movsb"); }
-fn repe_cmpsb() { write_ins1("repe cmpsb"); }
-fn ret() { write_ins1("ret"); }
+fn syscall_() { write_ins("syscall"); }
+fn cqo() { write_ins("cqo"); }
+fn rep_movsb() { write_ins("rep movsb"); }
+fn repe_cmpsb() { write_ins("repe cmpsb"); }
+fn ret() { write_ins("ret"); }
 
 fn jnz(val:String) { write_ins2("jnz", val); }
 fn jz(val:String) { write_ins2("jz", val); }
@@ -125,12 +129,15 @@ fn bool_lbl(num:int) String {
 fn generic_lbl(num:int) String {
     return strcat("LBL_", fmt_dec(num));
 }
+
 fn if_lbl(num:int) String {
     return strcat("IF_", fmt_dec(num));
 }
+
 fn while_cond_lbl(num:int) String {
     return strcat("WHC_", fmt_dec(num));
 }
+
 fn while_end_lbl(num:int) String {
     return strcat("WHE_", fmt_dec(num));
 }
@@ -142,9 +149,11 @@ fn glbl_lbl(lbl:String) String {
 fn deref(val:String) String {
     return strcat(strcat("[", val), "]");
 }
+
 fn offset_min(a:String, off:int) String{
     return deref(strcat(strcat(a, "-"), fmt_dec(off)));
 }
+
 fn offset_plus(a:String, off:int) String{
     return deref(strcat(strcat(a, "+"), fmt_dec(off)));
 }
