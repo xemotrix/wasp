@@ -14,7 +14,6 @@ struct TypeStructDef {
     fields:*String;
     types:*Type;
     n_fields:int;
-    sizeb:int;
 }
 
 struct TypeStructName {
@@ -191,6 +190,22 @@ struct AST {
 }
 
 ///// AST UTILS ////////////////////
+
+fn eq_type(a:Type, b:Type) bool {
+    if a.kind == TYPE_KIND_PTR 
+    && b.kind == TYPE_KIND_PTR {
+        return eq_type(*a.ptr, *b.ptr);
+    }
+    if a.kind == TYPE_KIND_BASE
+    && b.kind == TYPE_KIND_BASE {
+        return a.base == b.base;
+    }
+    if a.kind == TYPE_KIND_STRUCT
+    && b.kind == TYPE_KIND_STRUCT {
+        return a.struct_name.name == b.struct_name.name;
+    }
+    return false;
+}
 
 fn ast_new_base_type(bt:int) Type {
     t:Type;

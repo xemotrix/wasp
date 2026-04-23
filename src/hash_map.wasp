@@ -1,17 +1,15 @@
-
 struct HashMapEntry {
     key: String;
-    value: *void;
+    value: int;
     next: *HashMapEntry;
+    filled: bool;
 }
 
 struct HashMap {
     arena:*ArenaHeader;
     entries:*HashMapEntry;
     n_entries:int;
-    elt_size:int;
 }
-
 
 // djb2
 fn hash_string(s:String) int {
@@ -22,15 +20,19 @@ fn hash_string(s:String) int {
         hash = ((hash << 5) + hash) + c;
         i++;
     }
+    if hash < 0 { hash = -hash; }
     return hash;
 }
 
-fn hm_new(n_entries:int, elt_size:int) HashMap {
+fn hm_new(n_entries:int) HashMap {
     hm:HashMap;
-    hm.arena = arena_new(2*n_entries*@size(HashMapEntry)); 
+    hm.arena = arena_new(2 * n_entries*@size(HashMapEntry)); 
     hm.entries = aalloc(hm.arena, n_entries*@size(HashMapEntry));
+    i:int = 0;
+    while i < n_entries{
+        hm.entries[i++].filled = false;
+    }
     hm.n_entries = n_entries;
-    hm.elt_size = elt_size;
     return hm;
 }
 
@@ -38,14 +40,13 @@ fn hm_destroy(hm:HashMap) {
     afree(hm.arena);
 }
 
-fn hm_get(hm:HashMap, key:String) *void {
+fn hm_get(hm:HashMap, key:String) *int {
     hash:int = hash_string(key);
     idx:int = hash % hm.n_entries;
     entry:*HashMapEntry = &hm.entries[idx];
-    if entry.value == 0 { return 0; }
-
+    if !entry.filled { return 0; }
     while true {
-        if entry.key == key { return entry.value; }
+        if entry.key == key { return &entry.value; }
         if entry.next == 0 { return 0; }
         entry = entry.next;
     }
@@ -53,32 +54,33 @@ fn hm_get(hm:HashMap, key:String) *void {
     return 0;
 }
 
-fn hm_set(hm:HashMap, key:String, value:*void) {
-    if value == 0 { error("invalid null pointer as HashMap value"); }
+fn hm_set(hm:HashMap, key:String, value:int) {
     hash:int = hash_string(key);
     idx:int = hash % hm.n_entries;
+
     entry:*HashMapEntry = &hm.entries[idx];
-    is_overwrite:bool = false;
-    while entry.value != 0 {
-        if entry.key == key {
-            is_overwrite=true;
-            break;
-        }
-        entry.next = aalloc(hm.arena, @size(HashMapEntry));
-        entry = entry.next;
-        entry.next = 0; // not really needed?
-    }
-    if !is_overwrite {
+
+    if !entry.filled {
         entry.key = key;
-        entry.value = aalloc(hm.arena, hm.elt_size);
+        entry.filled = true;
+        entry.value = value;
+        entry.next = 0;
+        return;
     }
 
-    value_dst_ptr:*char = entry.value;
-    value_src_ptr:*char = value;
-
-    i:int = 0;
-    while i < hm.elt_size {
-        value_dst_ptr[i] = value_src_ptr[i];
-        i++;
+    while true {
+        if entry.key == key {
+            entry.value = value;
+            return;
+        }
+        if entry.next == 0 {
+            entry.next = aalloc(hm.arena, @size(HashMapEntry));
+            entry.next.key = key;
+            entry.next.filled = true;
+            entry.next.value = value;
+            entry.next.next = 0;
+            return;
+        }
+        entry = entry.next;
     }
 }

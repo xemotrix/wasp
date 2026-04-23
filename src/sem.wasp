@@ -488,7 +488,6 @@ fn type_check(ast:*AST) {
     sym_init_tables();
     sym_push_frame();
     define_top_level(ast);
-    sym_compute_type_sizes();
     i:int = 0;
     while i < ast.defs_len {
         tc_def(&ast.defs[i]);

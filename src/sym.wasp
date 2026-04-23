@@ -52,13 +52,20 @@ fn to_stack_size(size:int) int {
 var TT:*TypeTable = 0;
 var ST:*SymT = 0;
 var SSS:*ScopedSymbolStack = 0;
+var MemoSizes:*HashMap = 0;
+
+fn init_memo_sizes() {
+    MemoSizes = malloc(@size(HashMap));
+    *MemoSizes = hm_new(256);
+}
 
 fn size_of_type(t:Type) int {
-    if t.kind == TYPE_KIND_STRUCT {
-        sym_fill_index_if_struct(&t);
-        if t.struct_name.sym_idx >= TT.len { error("struct idx out of range"); }
-        return TT.structs[t.struct_name.sym_idx].sizeb;
-    }
+    if MemoSizes == 0 { init_memo_sizes(); }
+    // to avoid infinite recursion
+    return size_of_type_rec(t, 0, t);
+}
+
+fn size_of_type_rec(original:Type, depth:int, t:Type) int {
     if t.kind == TYPE_KIND_PTR { return 8; }
     if t.kind == TYPE_KIND_BASE {
         if t.base == TYPE_CHAR { return 1; }
@@ -66,8 +73,26 @@ fn size_of_type(t:Type) int {
         if t.base == TYPE_INT  { return 8; }
         if t.base == TYPE_VOID { error("void has no size"); }
     }
-    error("UNIMPLEMENTED: type kind size");
-    return 0;//unreachable
+    if depth > 0 && eq_type(original, t) { error("cyclic type definition"); }
+
+    memo_size:*int = hm_get(*MemoSizes, t.struct_name.name);
+    if memo_size != 0 { return *memo_size; }
+
+    if t.struct_name.sym_idx < 0 || t.struct_name.sym_idx >= TT.len {
+        t.struct_name.sym_idx = sym_search_type(t.struct_name.name);
+    }
+
+    tdef:TypeStructDef = sym_search_type_idx(t.struct_name.sym_idx);
+
+    tot:int = 0;
+    i:int = 0;
+    while i < tdef.n_fields {
+        tot = tot + size_of_type_rec(original, depth+1, tdef.types[i++]);
+    }
+    tot = (tot + 7) & ~7;
+
+    hm_set(*MemoSizes, t.struct_name.name, tot);
+    return tot;
 }
 
 fn sym_add_type(ts:TypeStructDef) {
@@ -75,7 +100,6 @@ fn sym_add_type(ts:TypeStructDef) {
         TT.cap = TT.cap * 2;
         TT.structs = mrealloc(TT.structs, TT.cap * @size(TypeStructDef));
     }
-    ts.sizeb = -1; // mark it as unknown for now
     TT.structs[TT.len++] = ts;
 }
 
@@ -92,57 +116,9 @@ fn sym_search_type(name:String) int {
         }
         i++;
     }
+    println(name);
     error("couldn't find type");
     return 0;//unreachable
-}
-
-fn sym_compute_type_sizes() {
-    n_finished:int = 0;
-    last_round_total_finished:int = 0;
-    i:int = 0;
-    while n_finished != TT.len {
-        t_i:int = 0;
-        while (t_i < TT.len) {
-            if TT.structs[t_i].sizeb != -1 { t_i++; continue; }
-            size_accum:int = 0;
-            fields_finished:int = 0;
-            f_i:int = 0;
-            while f_i < TT.structs[t_i].n_fields {
-                t:Type = TT.structs[t_i].types[f_i];
-                st:TypeStructDef;
-                if t.kind == TYPE_KIND_PTR {
-                    size_accum = size_accum+8;
-                    fields_finished++;
-                }
-                if t.kind == TYPE_KIND_BASE {
-                    if t.base == TYPE_VOID { error("can't compute the size of void"); }
-                    if t.base == TYPE_BOOL { size_accum++; }
-                    if t.base == TYPE_INT { size_accum = size_accum+8; }
-                    if t.base == TYPE_CHAR { size_accum++; }
-                    fields_finished++;
-                }
-                if t.kind == TYPE_KIND_STRUCT {
-                    st = sym_search_type_idx(sym_search_type(t.struct_name.name));
-                    if st.sizeb == -1 { f_i++; continue; }
-                    size_accum = size_accum+st.sizeb;
-                    fields_finished++;
-                }
-                f_i++;
-            }
-
-            if fields_finished == TT.structs[t_i].n_fields {
-                sizeb:int = (size_accum + 7) & ~7;
-                n_finished++;
-                TT.structs[t_i].sizeb = sizeb;
-            }
-            t_i++;
-        }
-        if last_round_total_finished == n_finished {
-            error("couldn't resolve type sizes, maybe you have recursive definitions?");
-        }
-        last_round_total_finished = n_finished;
-    }
-    println("Success computing type sizes");
 }
 
 fn sym_push_frame() {
