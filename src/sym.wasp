@@ -89,7 +89,7 @@ fn size_of_type_rec(original:Type, depth:int, t:Type) int {
     while i < tdef.n_fields {
         tot = tot + size_of_type_rec(original, depth+1, tdef.types[i++]);
     }
-    tot = (tot + 7) & ~7;
+    tot = to_stack_size(tot);
 
     hm_set(*MemoSizes, t.struct_name.name, tot);
     return tot;
